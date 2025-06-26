@@ -2,7 +2,11 @@ import xml.etree.ElementTree as et
 import requests
 import xml
 import json
-from searchable_list_ui import Searchable_dropdown_menu
+import pandas as pd
+import customtkinter as ctk
+from PIL import Image
+from tkinter import ttk
+from searchable_list_ui import SearchableDropdownMenu
 
 #old code for ECCC api - uses xml, dropped because of data inconsistencies (POP missing often, etc.)
 def mcs_geomet_api():
@@ -161,6 +165,87 @@ def mcs_geomet_api():
     #     print(pop_hourly)
     #     print(wind_hourly)
 
-test_response = requests.get("https://api.open-meteo.com/v1/forecast?latitude=43&longitude=-79.4163&hourly=temperature_2m&timezone=auto")
-print(test_response.status_code)
-print(test_response.json())
+# test_response = requests.get("https://api.open-meteo.com/v1/forecast?latitude=43&longitude=-79.4163&hourly=temperature_2m&timezone=auto")
+#Current weather: https://api.open-meteo.com/v1/forecast?latitude=43.7001&longitude=-79.4163&current=temperature_2m&forecast_days=1
+# print(test_response.status_code)
+# print(test_response.json())
+
+class MainWindow(ctk.CTk):
+    def __init__(self, title, windowsize):
+        super().__init__()
+
+        #window stuff
+        self.title(title)
+        self.geometry(f'{windowsize[0]}x{windowsize[1]}')
+        self.grid_rowconfigure((0,1), weight=1, uniform="a") #can pass a list(range(2) to spec number of cols/rows in place of (0,1) in this case)
+        self.grid_columnconfigure(0, weight=1, uniform="a")
+        self.grid_columnconfigure(1, weight=4, uniform="a")
+        
+        #variables
+        self.base_font = ("", 15)
+        self.placeholder_image = ctk.CTkImage(light_image=Image.open("test image.png"))
+
+        #WIDGETS
+        #Frame Structure for Main Page
+        self.current_cond_frame = ctk.CTkFrame(self, fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
+        self.current_cond_frame.grid_columnconfigure((0,1), weight=1, uniform="a")
+        self.current_cond_frame.grid_rowconfigure((0,1,2,3,4,5,6,7,8,9), weight=1, uniform="a")
+        self.seven_day_frame = ctk.CTkFrame(self, fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
+        self.hourly_frame = ctk.CTkFrame(self, fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
+        #subframe for current cond (options, refresh, city display)
+        self.ui_panel = ctk.CTkFrame(self.current_cond_frame, fg_color="#003030", corner_radius=0)
+        #subframes for seven day
+        #subframes for hourly
+
+        #UI Panel
+        self.selected_city_display = ctk.CTkLabel(self.ui_panel, text="Toronto, Ontario", bg_color="#003030")
+        self.refresh_data = ctk.CTkButton(self.ui_panel, text="", image=self.placeholder_image, fg_color="#005050", corner_radius=0, width=10, command=lambda: print("Refresh Weather Data"))
+        self.options = ctk.CTkButton(self.ui_panel, text="", image=self.placeholder_image, fg_color="#005050", corner_radius=0, width=10, command=lambda: print("Options Menu"))
+
+        #Current Conditions
+        self.current_cond_title = ctk.CTkLabel(self.current_cond_frame, bg_color="#008575", text="Current Conditions", font=self.base_font)
+        self.current_cond_temp = ctk.CTkLabel(self.current_cond_frame, text="25 C", font=self.base_font, bg_color="#008575", compound="left", image=self.placeholder_image, corner_radius=0)
+        self.current_cond_desc = ctk.CTkLabel(self.current_cond_frame, text="Freezing Drizzle: light", font=self.base_font)
+        self.current_cond_humidity = ctk.CTkLabel(self.current_cond_frame, text="Humidity: 60%", font=self.base_font)
+        self.current_cond_feels = ctk.CTkLabel(self.current_cond_frame, text="Feels Like: 29 C", font=self.base_font)
+        self.current_cond_wind = ctk.CTkLabel(self.current_cond_frame, text="Wind: 25 Kph", font=self.base_font)
+        self.current_cond_gust = ctk.CTkLabel(self.current_cond_frame, text="Gust: 35 Kph", font=self.base_font, corner_radius=0)
+        self.current_cond_pop = ctk.CTkLabel(self.current_cond_frame, text="POP 65%", font=self.base_font, corner_radius=0)
+        self.current_cond_mm = ctk.CTkLabel(self.current_cond_frame, text="10 mm", font=self.base_font, corner_radius=0)
+
+        #LAYOUT
+        #frames
+        self.current_cond_frame.grid(row=0, column=0, sticky="nsew")
+        self.ui_panel.grid(row=0, column=0, columnspan=2, sticky="new")
+        self.seven_day_frame.grid(row=0, column=1, sticky="nsew")
+        self.hourly_frame.grid(row=1, column=0, columnspan=2, sticky="nsew")
+
+        #UI panel
+        self.options.pack(side="left", pady=1)
+        self.refresh_data.pack(side="left", pady=1)
+        self.selected_city_display.pack(side="left", fill="x", pady=1, padx=3)
+
+        #Current Conditions
+        self.current_cond_title.grid(row=1, column=0, columnspan=2, sticky="sew")
+        self.current_cond_temp.grid(row=2, column=0, columnspan=2, sticky="nsew")
+        self.current_cond_desc.grid(row=3, column=0, columnspan=2, sticky="nsew")
+        self.current_cond_humidity.grid(row=4, column=0, columnspan=2, sticky="nsew")
+        self.current_cond_feels.grid(row=5, column=0, columnspan=2, sticky="nsew")
+        self.current_cond_wind.grid(row=6, column=0, columnspan=2, sticky="nsew")
+        self.current_cond_gust.grid(row=7, column=0, columnspan=2, sticky="new")
+        self.current_cond_pop.grid(row=8, column=0, columnspan=2, sticky="nsew")
+        self.current_cond_mm.grid(row=9, column=0, columnspan=2, sticky="nsew")
+
+        #icon file needs .exe or .py directory
+        # try:
+        #     exe_path = os.getcwd()
+        # except Exception:
+        #     exe_path = os.path.dirname(os.path.abspath(sys.executable))
+        # icon_path = os.path.join(exe_path, "Icon.ico")
+        # self.iconbitmap(icon_path)
+
+        self.mainloop()
+    
+        #test_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.selected_lat}&longitude={self.selected_long}&current=temperature_2m&forecast_days=1&timezone=auto")
+       
+main_window = MainWindow("Title", (960, 540))

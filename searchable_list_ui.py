@@ -1,43 +1,23 @@
 import customtkinter as ctk
-from tkinter import ttk
-full_lst = ["item1", "item2", "item3", "iter", "itram", "object2", "object 5", "thing3", "dohicky4", "dohicky5", "thang6", "isathing"]
 
-
-
-#basic main window class to hold the dropdown for testing
-class MainWindow(ctk.CTk):
-    def __init__(self, windowsize):
-        super().__init__()
-        self.geometry(f'{windowsize[0]}x{windowsize[1]}')
-
-        
-        #widgets
-        searchable_dropdown = Searchable_dropdown_menu(self, full_lst)
-        
-
-        #layout
-        searchable_dropdown.pack(fill='both', expand=True)
-
-        self.mainloop()
-
-class Searchable_dropdown_menu(ctk.CTkFrame):
+class SearchableDropdownMenu(ctk.CTkFrame):
     def __init__(self, parent, full_lst):
         super().__init__(master=parent)
 
         #variables
+        self.full_lst = full_lst
         self.dropdown_selection = ctk.StringVar()
         self.sub_lst = []
+        self.list_of_searches = []
 
         #widgets
-        self.dropdown_instuctions = ctk.CTkLabel(self, text="Click to Search, and/or Select Item from Dropdown", text_color="#1c5d5d")
-        self.display_choice = ctk.CTkLabel(self, textvariable=self.dropdown_selection)
+        self.dropdown_instuctions = ctk.CTkLabel(self, text="Click to Search, and/or Select City from Dropdown", text_color="#1c5d5d")
         self.dropdown_menu = ctk.CTkComboBox(self, width=250, values=full_lst, variable=self.dropdown_selection)
         self.dropdown_menu.set("Search")
 
         #layout
         self.dropdown_instuctions.pack()
         self.dropdown_menu.pack()
-        self.display_choice.pack()
 
         self.dropdown_menu.bind("<KeyRelease>", self.city_search)
         self.dropdown_menu.bind("<FocusIn>", self.clear_dropdown)
@@ -49,13 +29,13 @@ class Searchable_dropdown_menu(ctk.CTkFrame):
     def city_search(self, event):
         search = event.widget.get()
         if search == "":
-            self.dropdown_menu.configure(values=full_lst)
+            self.dropdown_menu.configure(values= self.full_lst)
             self.sub_lst = []
         elif len(search) == 1:
             self.matching_cities = []
             self.list_of_searches = []
             all_letters_match = False
-            for city in full_lst:
+            for city in  self.full_lst:
                 for i, l in enumerate(search):
                     if l.lower() == city[i].lower():
                         all_letters_match = True
@@ -78,7 +58,8 @@ class Searchable_dropdown_menu(ctk.CTkFrame):
                     self.list_of_searches.pop()
                 most_recent_matches = self.sub_lst[-1]
             except IndexError or AttributeError: #self.sub_list or self.list_of_searches must be empty, search full list
-                most_recent_matches = full_lst
+                most_recent_matches =  self.full_lst
+                self.list_of_searches = [] #if skipped first letter, initialize list_of_searches here
             for city in most_recent_matches: #loop through previous sub list
                 for i, l in enumerate(search):
                     if l.lower() == city[i].lower():
@@ -101,7 +82,3 @@ class Searchable_dropdown_menu(ctk.CTkFrame):
                 self.dropdown_menu.configure(values=[]) #no matching cities found (or some kind of error?)
             if search not in self.list_of_searches:
                 self.list_of_searches.append(search)
-
-# decide how to import csv, and store necessary data
-
-MainWindow((1000, 600))
