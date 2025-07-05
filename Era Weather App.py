@@ -6,6 +6,8 @@ import pandas as pd
 import customtkinter as ctk
 from PIL import Image
 from tkinter import ttk
+from itertools import islice, chain
+import datetime
 #from searchable_list_ui import SearchableDropdownMenu
 from Options_Menu import OptionsMenu
 
@@ -166,11 +168,6 @@ def mcs_geomet_api():
     #     print(pop_hourly)
     #     print(wind_hourly)
 
-# test_response = requests.get("https://api.open-meteo.com/v1/forecast?latitude=43&longitude=-79.4163&hourly=temperature_2m&timezone=auto")
-#Current weather: https://api.open-meteo.com/v1/forecast?latitude=43.7001&longitude=-79.4163&current=temperature_2m&forecast_days=1
-# print(test_response.status_code)
-# print(test_response.json())
-
 class MainWindow(ctk.CTk):
     def __init__(self, title, windowsize):
         super().__init__()
@@ -183,6 +180,8 @@ class MainWindow(ctk.CTk):
         self.grid_columnconfigure(1, weight=4, uniform="a")
         
         #variables
+        today = datetime.datetime.now().weekday()
+        hour = datetime.datetime.now().hour
         self.base_font = ("", 15)
         self.placeholder_image = ctk.CTkImage(light_image=Image.open("test image.png"))
         self.selected_city_var = ctk.StringVar(value="No City Selected")
@@ -193,14 +192,32 @@ class MainWindow(ctk.CTk):
         self.current_cond_frame.grid_columnconfigure((0,1), weight=1, uniform="a")
         self.current_cond_frame.grid_rowconfigure((0,1,2,3,4,5,6,7,8,9), weight=1, uniform="a")
         self.seven_day_frame = ctk.CTkFrame(self, fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
-        self.hourly_frame = ctk.CTkFrame(self, fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
+        self.seven_day_frame.grid_columnconfigure((0,1,2,3,4,5,6), weight=1, uniform="a")
+        self.seven_day_frame.grid_rowconfigure(0, weight=1)
+        self.hourly_frame = ctk.CTkScrollableFrame(self, fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
+        self.hourly_frame.grid_rowconfigure((0,1,2,3,4,5), weight=1, uniform="a")
+        self.hourly_frame.grid_columnconfigure((0,1,2,3,4,5,6,7,8,9,10,11), weight=1, uniform="a")
+        #testing frame size and placement for hourly forecast
+        self.testframe = ctk.CTkFrame(self.hourly_frame, height=90, fg_color="#000099")
+        self.testframe2 = ctk.CTkFrame(self.hourly_frame, height=90, fg_color="#009900")
+        self.testframe3 = ctk.CTkFrame(self.hourly_frame, height=90, fg_color="#990000")
+        self.testframe4 = ctk.CTkFrame(self.hourly_frame, height=90, fg_color="#000099")
+        self.testframe5 = ctk.CTkFrame(self.hourly_frame, height=90, fg_color="#009900")
+        self.testframe6 = ctk.CTkFrame(self.hourly_frame, height=90, fg_color="#990000")
+        self.testframe.grid(row=0, column=0, sticky="nsew")
+        self.testframe2.grid(row=1, column=0, sticky="nsew")
+        self.testframe3.grid(row=2, column=0, sticky="nsew")
+        self.testframe4.grid(row=3, column=0, sticky="nsew")
+        self.testframe5.grid(row=4, column=0, sticky="nsew")
+        self.testframe6.grid(row=5, column=0, sticky="nsew")
+
         #subframe for current cond (options, refresh, city display)
         self.ui_panel = ctk.CTkFrame(self.current_cond_frame, fg_color="#003030", corner_radius=0)
         #subframes for seven day
         #subframes for hourly
 
         #UI Panel
-        self.selected_city_display = ctk.CTkLabel(self.ui_panel, textvariable=self.selected_city_var, bg_color="#003030")
+        self.selected_city_display = ctk.CTkLabel(self.ui_panel, textvariable=self.selected_city_var, bg_color="#003030", text_color="#999999")
         self.refresh_data = ctk.CTkButton(self.ui_panel, text="", image=self.placeholder_image, fg_color="#005050", corner_radius=0, width=10, command=self.test_data_storage)
         self.options = ctk.CTkButton(self.ui_panel, text="", image=self.placeholder_image, fg_color="#005050", corner_radius=0, width=10, command=self.open_options_menu)
 
@@ -214,6 +231,53 @@ class MainWindow(ctk.CTk):
         self.current_cond_gust = ctk.CTkLabel(self.current_cond_frame, text="Gust: 35 Kph", font=self.base_font, corner_radius=0)
         self.current_cond_pop = ctk.CTkLabel(self.current_cond_frame, text="POP 65%", font=self.base_font, corner_radius=0)
         self.current_cond_mm = ctk.CTkLabel(self.current_cond_frame, text="10 mm", font=self.base_font, corner_radius=0)
+
+        #7-14 Day Forecast
+        #subframes
+        self.seven_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        self.days_of_wk = self.resort_days(self.seven_days, today)
+        day_frame_list = []
+        for i, day in enumerate(self.days_of_wk):
+            #frames
+            self.day_frame = ctk.CTkFrame(self.seven_day_frame, width=109, fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
+            #widgets
+            day_frame_title = ctk.CTkLabel(self.day_frame, text=day, font=self.base_font)
+            day_frame_icon = ctk.CTkLabel(self.day_frame, text="", image=self.placeholder_image)
+            day_frame_high = ctk.CTkLabel(self.day_frame, text="High: 25 C", font=self.base_font)
+            day_frame_low = ctk.CTkLabel(self.day_frame, text="Low: 14 C", font=self.base_font)
+            day_frame_humidity = ctk.CTkLabel(self.day_frame, text="Humidity: 60 %", font=self.base_font)
+            day_frame_wind = ctk.CTkLabel(self.day_frame, text="Wind: 25 Kph", font=self.base_font)
+            day_frame_gust = ctk.CTkLabel(self.day_frame, text="Gust: 40 Kph", font=self.base_font)
+            day_frame_pop = ctk.CTkLabel(self.day_frame, text="POP: 75 %", font=self.base_font)
+            day_frame_mm = ctk.CTkLabel(self.day_frame, text="4 mm", font=self.base_font)
+            #layout
+            self.day_frame.grid(row=0, column=i, sticky="nsew")
+            day_frame_title.pack(pady=1)
+            day_frame_icon.pack(pady=1)
+            day_frame_high.pack(pady=1)
+            day_frame_low.pack(pady=1)
+            day_frame_humidity.pack(pady=1)
+            day_frame_wind.pack(pady=1)
+            day_frame_gust.pack(pady=1)
+            day_frame_pop.pack(pady=1)
+            day_frame_mm.pack(pady=1)
+
+            day_frame_list.append(self.day_frame)
+        
+        #hourly (72 hours) forecast
+        #plan: create counter, while loop that stops at 72, while also advancing the hour, but resetting when it reaches 12pm
+        #each row should be 12 hours, display 3 rows but frame will scroll to show remaining 3.
+        hour_count = 0
+        while hour_count < 73:
+            if hour < 25: #adv col, same row
+                print(hour, hour_count)
+            elif hour >= 25: #adv row, reset col
+                hour = 1
+                print(hour, hour_count)
+            hour += 1
+            hour_count += 1
+
+
 
         #LAYOUT
         #frames
@@ -237,7 +301,7 @@ class MainWindow(ctk.CTk):
         self.current_cond_gust.grid(row=7, column=0, columnspan=2, sticky="new")
         self.current_cond_pop.grid(row=8, column=0, columnspan=2, sticky="nsew")
         self.current_cond_mm.grid(row=9, column=0, columnspan=2, sticky="nsew")
-
+        
         self.mainloop()
 
         #icon file needs .exe or .py directory
@@ -257,11 +321,14 @@ class MainWindow(ctk.CTk):
         print(self.options_menu.selected_lat)
         print(self.options_menu.selected_long)
         print(self.options_menu.selected_city_var.get())
-        
-        
+        test_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.options_menu.selected_lat}&longitude={self.options_menu.selected_long}&current=temperature_2m&forecast_days=1&timezone=auto")
+        print(test_req.status_code)
+        print(test_req.json())
 
+    def resort_days(self,list, today):
+            iterable = iter(list)
+            next(islice(iterable, today, today), None)
+            return chain(iterable, islice(list, today))
         
-    
-        #test_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.selected_lat}&longitude={self.selected_long}&current=temperature_2m&forecast_days=1&timezone=auto")
        
 main_window = MainWindow("Title", (960, 540))
