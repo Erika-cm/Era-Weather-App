@@ -3,19 +3,19 @@ import pandas as pd
 import json
 from searchable_list_ui import SearchableDropdownMenu
 
-# class MainWindow(ctk.CTk):
-#     def __init__(self, title, windowsize):
-#         super().__init__()
+class MainWindow(ctk.CTk):
+    def __init__(self, title, windowsize):
+        super().__init__()
 
-#         #window stuff
-#         self.title(title)
-#         self.geometry(f'{windowsize[0]}x{windowsize[1]}')
+        #window stuff
+        self.title(title)
+        self.geometry(f'{windowsize[0]}x{windowsize[1]}')
 
-#         self.options_menu = OptionsMenu(self)
+        self.options_menu = OptionsMenu(self, selected_city_var="No City Selected")
 
-#         self.options_menu.pack(expand=True, fill="both")
+        self.options_menu.pack(expand=True, fill="both")
 
-#         self.mainloop()
+        self.mainloop()
 
 
 class OptionsMenu(ctk.CTkFrame):
@@ -53,5 +53,6 @@ class OptionsMenu(ctk.CTkFrame):
                     del self.city_data #no need to keep dataset in memory
                     self.selected_city_var.set(self.city + " " + self.region)
                     self.destroy()
-                
-# main_window = MainWindow("Testing Options Menu", (960, 540))
+
+if __name__ == "__main__":               
+    main_window = MainWindow("Testing Options Menu", (960, 540))
