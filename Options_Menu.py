@@ -21,7 +21,7 @@ class MainWindow(ctk.CTk):
 class OptionsMenu(ctk.CTkFrame):
         def __init__(self, parent, selected_city_var):
             super().__init__(master=parent)
-
+            
             #variables
             self.selected_city_var = selected_city_var
             self.city_data = pd.read_csv('worldcities.csv')
@@ -40,7 +40,7 @@ class OptionsMenu(ctk.CTkFrame):
             #layout
             self.city_selection_frame.pack(expand=True, fill="both")
             self.confirm_button.pack(fill="x", side="right")
-            self.cancel_button.pack( fill="x", side="left")
+            self.cancel_button.pack(fill="x", side="left")
 
         def store_selected_city(self): #this method will be updated to store the selected city info in a json
                 if self.city_selection_frame.dropdown_selection.get() != "Search":
