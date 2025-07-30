@@ -5,6 +5,7 @@ import json
 import datetime
 from itertools import islice, chain
 from Options_Menu import OptionsMenu
+from Logic import AppLogic
 
 class MainWindow(ctk.CTk):
     def __init__(self, title, windowsize):
@@ -26,86 +27,92 @@ class MainWindow(ctk.CTk):
         self.hourly_font = ("Arial", 12)
         self.placeholder_image = ctk.CTkImage(light_image=Image.open("test image.png"))
         self.selected_city_var = ctk.StringVar(value="No City Selected")
+        self.selected_lat = "default"
+        self.selected_long = "default"
 
         #instantiate frame classes
-        self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.placeholder_image)
-        self.ui_panel = UIPanel(self, self.base_font, self.placeholder_image, self.selected_city_var)
-        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.placeholder_image, today)
-        self.hourly_frame = HourlyPanel(self, self.hourly_font, self.placeholder_image, hour)
+        self.app_logic = AppLogic(self)
 
+        self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.app_logic, self.placeholder_image)
+        self.ui_panel = UIPanel(self, self.base_font, self.placeholder_image)
+        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.app_logic, self.placeholder_image, today)
+        self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic, self.placeholder_image, hour)
+        
         #layout
-        self.ui_panel.grid(row=0, column=0, sticky="new")
+        self.ui_panel.grid(row=0, column=0, columnspan=2, sticky="new")
         self.current_conditions_frame.grid(row=1, column=0, sticky="news")
-        self.seven_day_frame.grid(row=0, rowspan=2, column=1, sticky="news")
+        self.seven_day_frame.grid(row=1, column=1, sticky="news")
         self.hourly_frame.grid(row=2, column=0, columnspan=2, sticky="news")
 
         self.mainloop()
 
 class CurrentConditionsPanel(ctk.CTkFrame):
-    def __init__(self, parent, font, placeholder_image): #change name of image in final version
+    def __init__(self, parent, font, app_logic, placeholder_image): 
         super().__init__(master=parent)
+
+        self.parent = parent
 
         #panel chars
         self.configure(fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
-
+        
         #widgets
         self.current_cond_title = ctk.CTkLabel(self, bg_color="#008575", text="Current Conditions", font=font, height=20)
-        self.current_cond_temp = ctk.CTkLabel(self, bg_color="#008575", text="25 C", font=font, compound="left", image=placeholder_image, corner_radius=0, height=20)
-        self.current_cond_desc = ctk.CTkLabel(self, bg_color="#008575", text="Freezing Drizzle: light", font=font, height=20)
-        self.current_cond_humidity = ctk.CTkLabel(self, bg_color="#008575", text="Humidity: 60%", font=font, height=20)
-        self.current_cond_feels = ctk.CTkLabel(self, bg_color="#008575", text="Feels Like: 29 C", font=font, height=20)
-        self.current_cond_wind = ctk.CTkLabel(self, bg_color="#008575", text="Wind: 25 Kph", font=font, height=20)
-        self.current_cond_gust = ctk.CTkLabel(self, bg_color="#008575", text="Gust: 35 Kph", font=font, corner_radius=0, height=20)
-        self.current_cond_pop = ctk.CTkLabel(self, bg_color="#008575", text="POP: 65%", font=font, corner_radius=0, height=20)
-        self.current_cond_mm = ctk.CTkLabel(self, bg_color="#008575", text="10 mm", font=font, corner_radius=0, height=20)
+        self.current_cond_temp = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, compound="left", image=placeholder_image, corner_radius=0, height=20)
+        self.current_cond_desc = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, height=20)
+        self.current_cond_humidity = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, height=20)
+        self.current_cond_feels = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, height=20)
+        self.current_cond_wind = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, height=20)
+        self.current_cond_gust = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, corner_radius=0, height=20)
+        self.current_cond_mm = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, corner_radius=0, height=20)
+        self.current_cond_pressure = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, corner_radius=0, height=20)
 
         #layout
-        self.current_cond_title.pack(pady=10)
+        self.current_cond_title.pack(pady=(12,10))
         self.current_cond_temp.pack()
         self.current_cond_desc.pack(pady=(10,0))
         self.current_cond_humidity.pack(pady=(10,0))
         self.current_cond_feels.pack()
-        self.current_cond_wind.pack(pady=(10,0))
-        self.current_cond_gust.pack(pady=(0,10))
-        self.current_cond_pop.pack()
+        self.current_cond_wind.pack(pady=(8,0))
+        self.current_cond_gust.pack(pady=(0,8))
         self.current_cond_mm.pack()
+        self.current_cond_pressure.pack(pady=(4,0))
+
+        #start recursive api call and widget config for current conditions
+        app_logic.get_current_cond_thread(app_logic.get_current_cond)
 
 class UIPanel(ctk.CTkFrame):
-    def __init__(self, parent, font, placeholder_image, selected_city_var):
+    def __init__(self, parent, font, placeholder_image):
         super().__init__(master=parent)
 
         #panel chars
         self.configure(fg_color="#003030", corner_radius=0)
 
-        #variables
-        self.selected_city_var = selected_city_var
-        self.parent = parent #reference to main window, used to parent options menu to the main window
+        #parent
+        self.parent = parent
         
         #widgets
-        self.selected_city_display = ctk.CTkLabel(self, textvariable=self.selected_city_var, bg_color="#003030", text_color="#999999")
-        self.refresh_data = ctk.CTkButton(self, text="", image=placeholder_image, fg_color="#005050", corner_radius=0, width=10, command=self.test_data_storage)
-        self.options = ctk.CTkButton(self, text="", image=placeholder_image, fg_color="#005050", corner_radius=0, width=10, command=self.open_options_menu)
+        self.selected_city_display = ctk.CTkLabel(self, textvariable=self.parent.selected_city_var, font=font, bg_color="#003030", text_color="#999999", wraplength=940, anchor="w")
+        self.refresh_data = ctk.CTkButton(self, text="", image=placeholder_image, font=font, fg_color="#005050", corner_radius=0, width=10, command=lambda: self.refresh())
+        self.options = ctk.CTkButton(self, text="", image=placeholder_image, font=font, fg_color="#005050", corner_radius=0, width=10, command=lambda: self.open_options_menu(parent, font))
 
         #layout
         self.options.pack(side="left", pady=1)
         self.refresh_data.pack(side="left", pady=1)
         self.selected_city_display.pack(side="left", fill="x", pady=1, padx=3)
 
-    def open_options_menu(self):
-        self.options_menu = OptionsMenu(self.parent, self.selected_city_var)
-        self.options_menu.grid(row=0, rowspan=3, column=0, columnspan=2, sticky="nsew")
+    def open_options_menu(self, parent, font):
+        parent.app_logic.load_city_data()
+        self.options_menu = OptionsMenu(parent, font, parent.app_logic, parent.app_logic.city_list, self.parent.selected_city_var, self.parent.selected_lat, self.parent.selected_long)
+        self.options_menu.grid(row=0, rowspan=3, column=0, columnspan=2, sticky="news")
         self.options_menu.tkraise()
     
-    def test_data_storage(self):
-        print(self.options_menu.selected_lat)
-        print(self.options_menu.selected_long)
-        print(self.options_menu.selected_city_var.get())
-        test_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.options_menu.selected_lat}&longitude={self.options_menu.selected_long}&current=temperature_2m&forecast_days=1&timezone=auto")
-        print(test_req.status_code)
-        print(test_req.json())
+    def refresh(self):
+        print("This is a refresh button, it will eventually send all 3 api requests and update displayed data")
+        print(self.parent.selected_city_var.get())
+        print(self.parent.selected_lat, self.parent.selected_long)
 
 class SevenDayPanel(ctk.CTkFrame):
-    def __init__(self, parent, font, placeholder_image, today):
+    def __init__(self, parent, font, app_logic, placeholder_image, today):
         super().__init__(master=parent)
         self.grid_columnconfigure((0,1,2,3,4,5,6), weight=1, uniform="a")
         self.grid_rowconfigure(0, weight=1)
@@ -133,11 +140,11 @@ class SevenDayPanel(ctk.CTkFrame):
             self.day_frame.grid(row=0, column=i, sticky="nsew", padx=1)
             day_frame_title.pack(pady=1)
             day_frame_icon.pack(pady=1)
-            day_frame_high.pack(pady=6)
-            day_frame_low.pack(pady=6)
-            day_frame_humid.pack(pady=6)
-            day_frame_wind.pack(pady=6)
-            day_frame_precip.pack(pady=(6,0))
+            day_frame_high.pack(pady=5)
+            day_frame_low.pack(pady=5)
+            day_frame_humid.pack(pady=5)
+            day_frame_wind.pack(pady=5)
+            day_frame_precip.pack(pady=(5,0))
 
             day_frame_list.append(self.day_frame)
 
@@ -147,7 +154,7 @@ class SevenDayPanel(ctk.CTkFrame):
         return chain(iterable, islice(list, today))
 
 class HourlyPanel(ctk.CTkScrollableFrame):
-    def __init__(self, parent, font, placeholder_image, hour):
+    def __init__(self, parent, font, app_logic, placeholder_image, hour):
         super().__init__(master=parent)
         self.grid_rowconfigure((0,1,2,3,4,5), weight=1, uniform="a")
         self.grid_columnconfigure((0,1,2,3,4,5,6,7,8,9,10,11), weight=1, uniform="a")
