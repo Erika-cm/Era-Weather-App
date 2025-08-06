@@ -18,7 +18,7 @@ class MainWindow(ctk.CTk):
 
         self.app_logic = AppLogic(self)
         self.app_logic.load_city_data() #this function still needs to be called to fill city_list (in main app this will be called when options menu is raised)
-        self.options_menu = OptionsMenu(self, self.base_font, self.app_logic, self.app_logic.city_list, self.selected_city_var, self.selected_lat, self.selected_long)
+        self.options_menu = OptionsMenu(self, self.base_font, self.app_logic, self.app_logic.city_list)
         self.options_menu.pack(expand=True, fill="both")
         self.testing_button = ctk.CTkButton(self, text="Test", command=self.testing_function)
         self.testing_button.pack()
@@ -29,7 +29,7 @@ class MainWindow(ctk.CTk):
         print(self.selected_lat)
 
 class OptionsMenu(ctk.CTkFrame):
-        def __init__(self, parent, font, app_logic, city_list, selected_city_var, selected_lat, selected_long):
+        def __init__(self, parent, font, app_logic, city_list):
             super().__init__(master=parent)
             self.grid_rowconfigure(0, weight=4, uniform="a")
             self.grid_rowconfigure(1, weight=1, uniform="a") #as options are added this row moves down while new ones are added above

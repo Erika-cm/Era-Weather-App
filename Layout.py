@@ -24,6 +24,7 @@ class MainWindow(ctk.CTk):
         hour = datetime.datetime.now().hour
         self.current_font = ("Arial", 16)
         self.base_font = ("Arial", 15)
+        self.mid_font = ("Arial", 13)
         self.hourly_font = ("Arial", 12)
         self.placeholder_image = ctk.CTkImage(light_image=Image.open("test image.png"))
         self.selected_city_var = ctk.StringVar(value="No City Selected")
@@ -35,7 +36,7 @@ class MainWindow(ctk.CTk):
 
         self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.app_logic, self.placeholder_image)
         self.ui_panel = UIPanel(self, self.base_font, self.placeholder_image)
-        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.app_logic, self.placeholder_image, today)
+        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.mid_font, self.app_logic, self.placeholder_image, today)
         self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic, self.placeholder_image, hour)
         
         #layout
@@ -102,7 +103,7 @@ class UIPanel(ctk.CTkFrame):
 
     def open_options_menu(self, parent, font):
         parent.app_logic.load_city_data()
-        self.options_menu = OptionsMenu(parent, font, parent.app_logic, parent.app_logic.city_list, self.parent.selected_city_var, self.parent.selected_lat, self.parent.selected_long)
+        self.options_menu = OptionsMenu(parent, font, parent.app_logic, parent.app_logic.city_list)
         self.options_menu.grid(row=0, rowspan=3, column=0, columnspan=2, sticky="news")
         self.options_menu.tkraise()
     
@@ -112,7 +113,7 @@ class UIPanel(ctk.CTkFrame):
         print(self.parent.selected_lat, self.parent.selected_long)
 
 class SevenDayPanel(ctk.CTkFrame):
-    def __init__(self, parent, font, app_logic, placeholder_image, today):
+    def __init__(self, parent, font, small_font, app_logic, placeholder_image, today):
         super().__init__(master=parent)
         self.grid_columnconfigure((0,1,2,3,4,5,6), weight=1, uniform="a")
         self.grid_rowconfigure(0, weight=1)
@@ -123,30 +124,33 @@ class SevenDayPanel(ctk.CTkFrame):
         #subframes
         self.seven_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
         self.days_of_wk = self.resort_days(self.seven_days, today)
-        day_frame_list = []
+        self.day_frame_list = []
         for i, day in enumerate(self.days_of_wk):
             #frames
             self.day_frame = ctk.CTkFrame(self, width=109, fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
             #widgets NOTE also remove placeholder text and images here in final version
-            day_frame_title = ctk.CTkLabel(self.day_frame, text=day, font=font)
-            day_frame_icon = ctk.CTkLabel(self.day_frame, text="", image=placeholder_image, height=15)
-            day_frame_high = ctk.CTkLabel(self.day_frame, text="High: 25 C\nFeels: 28 C", font=font, height=30)
-            day_frame_low = ctk.CTkLabel(self.day_frame, text="Low: 14 C\nFeels: 16 C", font=font, height=30)
-            day_frame_humid = ctk.CTkLabel(self.day_frame, text="Humidity: 60 %", font=font, height=15)
-            day_frame_wind = ctk.CTkLabel(self.day_frame, text="Wind: 25 Kph\nGust: 40 Kph", font=font, height=30)
-            day_frame_precip = ctk.CTkLabel(self.day_frame, text="POP: 75 %\n4 mm", font=font, height=30)
+            self.day_frame_title = ctk.CTkLabel(self.day_frame, text=day, font=font)
+            self.day_frame_icon = ctk.CTkLabel(self.day_frame, text="", image=placeholder_image, height=15)
+            self.day_frame_high = ctk.CTkLabel(self.day_frame, text="", font=font, height=30)
+            self.day_frame_low = ctk.CTkLabel(self.day_frame, text="", font=font, height=30)
+            self.day_frame_humid = ctk.CTkLabel(self.day_frame, text="", font=font, height=15)
+            self.day_frame_wind = ctk.CTkLabel(self.day_frame, text="", font=small_font, height=30)
+            self.day_frame_precip = ctk.CTkLabel(self.day_frame, text="", font=font, height=30)
 
             #layout
             self.day_frame.grid(row=0, column=i, sticky="nsew", padx=1)
-            day_frame_title.pack(pady=1)
-            day_frame_icon.pack(pady=1)
-            day_frame_high.pack(pady=5)
-            day_frame_low.pack(pady=5)
-            day_frame_humid.pack(pady=5)
-            day_frame_wind.pack(pady=5)
-            day_frame_precip.pack(pady=(5,0))
+            self.day_frame_title.pack(pady=1)
+            self.day_frame_icon.pack(pady=1)
+            self.day_frame_high.pack(pady=5)
+            self.day_frame_low.pack(pady=5)
+            self.day_frame_humid.pack(pady=5)
+            self.day_frame_wind.pack(pady=5)
+            self.day_frame_precip.pack(pady=(5,0))
 
-            day_frame_list.append(self.day_frame)
+            self.day_frame_list.append([self.day_frame, self.day_frame_icon, self.day_frame_high, self.day_frame_low, self.day_frame_humid, self.day_frame_wind, self.day_frame_precip])
+
+        #start recursive api call and widget config for current conditions
+        app_logic.get_seven_day_thread(app_logic.get_seven_day_forecast)
 
     def resort_days(self, list, today):
         iterable = iter(list)

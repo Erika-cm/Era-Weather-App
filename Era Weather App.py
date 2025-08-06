@@ -31,13 +31,14 @@ class MainWindow(ctk.CTk):
         hour = datetime.datetime.now().hour
         self.base_font = ("Arial", 15)
         self.current_font = ("Arial", 16)
+        self.mid_font = ("Arial", 13)
         self.hourly_font = ("Arial", 12)
         self.placeholder_image = ctk.CTkImage(light_image=Image.open("test image.png"))
         #attempt to fill city vars on run, if fails to load from json use defaults
         try:
-            with open("user_optionsX.json", "r") as user_data_import:
+            with open("user_options.json", "r") as user_data_import: 
                 json_import = json.load(user_data_import)
-            self.selected_city_var = ctk.StringVar(value=(json_import.get("City Name") + " " + json_import.get("Region Name")))
+            self.selected_city_var = ctk.StringVar(value=(json_import.get("City Name") + " " + json_import.get("Region Name"))) #country name to be added here
             self.selected_lat = json_import.get("Latitude")
             self.selected_long = json_import.get("Longitude")
             #self.selected_city_loaded = True #variable not in use: could be used to pause api reqs if no city selected
@@ -54,7 +55,7 @@ class MainWindow(ctk.CTk):
         #Frame Structure for Main Page
         self.ui_panel = UIPanel(self, self.base_font, self.placeholder_image)
         self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.app_logic, self.placeholder_image)
-        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.app_logic, self.placeholder_image, today)
+        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.mid_font,self.app_logic, self.placeholder_image, today)
         self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic, self.placeholder_image, hour)
               
         #LAYOUT

@@ -96,7 +96,7 @@ class AppLogic():
             self.parent.selected_lat = self.city_data[selected_city_mask]['lat'].iloc[0]
             self.parent.selected_long = self.city_data[selected_city_mask]['lng'].iloc[0]
             del self.city_data #no need to keep dataset in memory
-            self.parent.selected_city_var.set(self.city + " " + self.region) #likely add country to this string later
+            self.parent.selected_city_var.set(self.city + " " + self.region + " " + self.country) 
             #store selected city data as a dict, output to json
             selected_city_data = {"City Name" : self.city, 
                                   "Region Name" : self.region, 
@@ -113,7 +113,6 @@ class AppLogic():
     
     def get_current_cond(self):
         while self.parent.program_run == True:
-            print("req...")
             self.event.clear()
             self.current_cond_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&current=temperature_2m,weather_code,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,pressure_msl&timezone=auto")
             if self.current_cond_req.status_code == 404:
@@ -130,48 +129,57 @@ class AppLogic():
                 self.current_conditions_frame.current_cond_desc.configure(text=self.convert_weather_code(self.currend_cond_dict.get("current").get("weather_code")))
                 self.current_conditions_frame.current_cond_humidity.configure(text=f"Humidity: {self.currend_cond_dict.get("current").get("relative_humidity_2m")} %")
                 self.current_conditions_frame.current_cond_feels.configure(text=f"Feels Like: {self.currend_cond_dict.get("current").get("apparent_temperature")} C")
-                self.current_conditions_frame.current_cond_wind.configure(text=f"Wind: {self.currend_cond_dict.get("current").get("wind_speed_10m")} km/h")
+                self.current_conditions_frame.current_cond_wind.configure(text=f"Wind: {self.currend_cond_dict.get("current").get("wind_speed_10m")} km/h {self.convert_wind_deg(self.currend_cond_dict.get("current").get("wind_direction_10m"))}")
                 self.current_conditions_frame.current_cond_gust.configure(text=f"Gust: {self.currend_cond_dict.get("current").get("wind_gusts_10m")} km/h")
                 self.current_conditions_frame.current_cond_mm.configure(text=f"Precipitation: {self.currend_cond_dict.get("current").get("precipitation")} mm")
                 self.current_conditions_frame.current_cond_pressure.configure(text=f"Pressure: {round(self.currend_cond_dict.get("current").get("pressure_msl")/10, 1)} Kpa")
             self.event.set()
-            time.sleep(10)
+            time.sleep(1800) #will refresh every 30 mins
             self.get_current_cond()
-        #likely should set up what happens when api request errors (report response code somewhere, and fill widgets with placeholder data)
     
     def get_current_cond_thread(self, current_cond_func):
         current_cond_thread = threading.Thread(target=current_cond_func, args=())
         current_cond_thread.start()
 
-        '''
-        {'latitude': 19.375, 
-        'longitude': -99.125, 
-        'generationtime_ms': 0.08594989776611328, 
-        'utc_offset_seconds': -21600, 
-        'timezone': 'America/Mexico_City', 
-        'timezone_abbreviation': 'GMT-6', 
-        'elevation': 2230.0, 'current_units': {'time': 'iso8601', 
-                                                'interval': 'seconds', 
-                                                'temperature_2m': '°C', 
-                                                'weather_code': 'wmo code', 
-                                                'relative_humidity_2m': '%', 
-                                                'apparent_temperature': '°C', 
-                                                'wind_speed_10m': 'km/h', 
-                                                'wind_gusts_10m': 'km/h', 
-                                                'wind_direction_10m': '°', 
-                                                'precipitation': 'mm', 
-                                                'pressure_msl': 'hPa'}, 'current': {'time': '2025-07-24T12:45', 
-                                                                                    'interval': 900, 
-                                                                                    'temperature_2m': 22.5, 
-                                                                                    'weather_code': 1, 
-                                                                                    'relative_humidity_2m': 40, 
-                                                                                    'apparent_temperature': 23.7, 
-                                                                                    'wind_speed_10m': 9.5, 
-                                                                                    'wind_gusts_10m': 20.9, 
-                                                                                    'wind_direction_10m': 61, 
-                                                                                    'precipitation': 0.0, 
-                                                                                    'pressure_msl': 1018.3}} #divide by 10 to get kpa
-        '''
+    def get_seven_day_forecast(self):
+        '''for reference, the day frame list is as follows: 
+        [self.day_frame, self.day_frame_icon, self.day_frame_high, self.day_frame_low, self.day_frame_humid, self.day_frame_wind, self.day_frame_precip]
+        use self.seven_day_frame.day_frame_list[i][w] where i = day frame, and w = the widget from the above list (its children)'''
+        while self.parent.program_run == True:
+            self.event.clear()
+            seven_day_error_msg = ""
+            api_error = False
+            self.seven_day_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&daily=weather_code,temperature_2m_max,apparent_temperature_max,temperature_2m_min,apparent_temperature_min,relative_humidity_2m_mean,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max,precipitation_sum&timezone=auto")
+            if self.seven_day_req.status_code == 404:
+                seven_day_error_msg = "404 Not Found"
+                api_error = True
+            elif self.seven_day_req.status_code == 500:
+                seven_day_error_msg = "500 Internal Server Error"
+                api_error = True
+            elif self.seven_day_req.status_code != 200:
+                seven_day_error_msg = "Unknown API Error"
+                api_error = True
+            elif self.seven_day_req.status_code == 200 and self.seven_day_req.content == b'':
+                seven_day_error_msg = "No Data"
+                api_error = True
+            if api_error == True:
+                for i, day in enumerate(self.seven_day_frame.day_frame_list):
+                    day[2].configure(text=seven_day_error_msg)
+            elif self.seven_day_req.content != b'':
+                self.seven_day_dict = self.seven_day_req.json()
+                for i, day in enumerate(self.seven_day_frame.day_frame_list):
+                    day[2].configure(text=f"High: {self.seven_day_dict.get("daily").get("temperature_2m_max")[i]} C\nFeels: {self.seven_day_dict.get("daily").get("apparent_temperature_max")[i]} C")
+                    day[3].configure(text=f"Low: {self.seven_day_dict.get("daily").get("temperature_2m_min")[i]} C\nFeels: {self.seven_day_dict.get("daily").get("apparent_temperature_min")[i]} C")
+                    day[4].configure(text=f"Humidity: {self.seven_day_dict.get("daily").get("relative_humidity_2m_mean")[i]} %")
+                    day[5].configure(text=f"Wind: {self.seven_day_dict.get("daily").get("wind_speed_10m_max")[i]} Km/h\nGust: {self.seven_day_dict.get("daily").get("wind_gusts_10m_max")[i]} Km/h")
+                    day[6].configure(text=f"POP: {self.seven_day_dict.get("daily").get("precipitation_probability_max")[i]} %\n{self.seven_day_dict.get("daily").get("precipitation_sum")[i]} mm")     
+            self.event.set()
+            time.sleep(10800) #updates every 3 hours
+            self.get_seven_day_forecast()
+
+    def get_seven_day_thread(self, seven_day_func):
+        seven_day_thread = threading.Thread(target=seven_day_func, args=())
+        seven_day_thread.start()
 
     def convert_weather_code(self, code: int):
         weathercode_dict = {0 : "Clear Sky",
@@ -204,3 +212,8 @@ class AppLogic():
                             99 : "Thunderstorms with Heavy Hail"}
         return weathercode_dict.get(code)
     
+    def convert_wind_deg(self, degree: int):
+        compass_sectors = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"]
+        return compass_sectors[round((degree%360)/22.5)]
+
+        #304 13.511111111111111, NW
