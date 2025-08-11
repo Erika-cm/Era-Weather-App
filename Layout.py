@@ -32,7 +32,7 @@ class MainWindow(ctk.CTk):
         self.selected_long = "default"
 
         #instantiate frame classes
-        self.app_logic = AppLogic(self)
+        self.app_logic = AppLogic(self, hour)
 
         self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.app_logic, self.placeholder_image)
         self.ui_panel = UIPanel(self, self.base_font, self.placeholder_image)
@@ -187,26 +187,28 @@ class HourlyPanel(ctk.CTkScrollableFrame):
             self.hour_frame = ctk.CTkFrame(self, fg_color="#008575", height=133, width=77, border_width=1, border_color="#000000", corner_radius=0)
             #widgets NOTE also remove placeholder text and images from here in final version
             self.hour_title = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text=hour_str, font=font, corner_radius=0, height=18)
-            self.hour_temp = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="35 C", compound="left", image=placeholder_image, font=font, corner_radius=0, height=15)
-            self.hour_feels = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="Feels: 38 C", font=font, corner_radius=0, height=15)
-            self.hour_wind = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="Wind: 25 Kph", font=font, corner_radius=0, height=15)
-            self.hour_gust = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="Gust: 30 Kph", font=font, corner_radius=0, height=15)
-            self.hour_precip = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="POP: 30%", font=font, corner_radius=0, height=15)
-            self.hour_mm = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="10mm", font=font, corner_radius=0, height=15)
+            self.hour_temp = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="", compound="left", image=placeholder_image, font=font, corner_radius=0, height=15)
+            self.hour_feels = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="", font=font, corner_radius=0, height=15)
+            self.hour_wind_txt = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="Wind/Gust", font=font, corner_radius=0, height=15)
+            self.hour_wind_nums = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="", font=font, corner_radius=0, height=15)
+            self.hour_precip = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="", font=font, corner_radius=0, height=15)
+            self.hour_mm = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="", font=font, corner_radius=0, height=15)
             #layout
             self.hour_frame.grid(row=row_count, column=column_count, sticky="nwse", padx=1, pady=1)
             self.hour_title.pack(pady=(2,1))
             self.hour_temp.pack()
             self.hour_feels.pack(pady=1)
-            self.hour_wind.pack(pady=(2,0))
-            self.hour_gust.pack(pady=(0,2))
+            self.hour_wind_txt.pack(pady=(2,0))
+            self.hour_wind_nums.pack(pady=(0,2))
             self.hour_precip.pack(pady=(2,0))
             self.hour_mm.pack(pady=(0,2))
             column_count += 1
             hour += 1
             hour_total += 1
 
-            self.hour_frame_list.append(self.hour_frame)
+            self.hour_frame_list.append([self.hour_frame, self.hour_temp, self.hour_feels, self.hour_wind_txt, self.hour_wind_nums, self.hour_precip, self.hour_mm])
+
+        app_logic.get_hourly_thread(app_logic.get_hourly_forecast)
 
 if __name__ == "__main__":
     main_window = MainWindow("Testing Layout", (960, 540))

@@ -6,13 +6,14 @@ import time
 import requests
 
 class AppLogic():
-    def __init__(self, parent):
+    def __init__(self, parent, hour):
 
         #variables
         self.list_of_searches = []
         self.city_list = []
         self.event = threading.Event()
         self.parent = parent
+        self.current_hour = hour
         
     
     def give_applogic_panel_access(self, current_conditions_frame, seven_day_frame, hourly_frame):
@@ -150,14 +151,15 @@ class AppLogic():
             seven_day_error_msg = ""
             api_error = False
             self.seven_day_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&daily=weather_code,temperature_2m_max,apparent_temperature_max,temperature_2m_min,apparent_temperature_min,relative_humidity_2m_mean,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max,precipitation_sum&timezone=auto")
+            # print(self.seven_day_req.json())
             if self.seven_day_req.status_code == 404:
-                seven_day_error_msg = "404 Not Found"
+                seven_day_error_msg = "Error 404"
                 api_error = True
             elif self.seven_day_req.status_code == 500:
-                seven_day_error_msg = "500 Internal Server Error"
+                seven_day_error_msg = "Error 500"
                 api_error = True
             elif self.seven_day_req.status_code != 200:
-                seven_day_error_msg = "Unknown API Error"
+                seven_day_error_msg = "Error 400" #indicates general/unknown api error
                 api_error = True
             elif self.seven_day_req.status_code == 200 and self.seven_day_req.content == b'':
                 seven_day_error_msg = "No Data"
@@ -180,6 +182,51 @@ class AppLogic():
     def get_seven_day_thread(self, seven_day_func):
         seven_day_thread = threading.Thread(target=seven_day_func, args=())
         seven_day_thread.start()
+
+    def get_hourly_forecast(self):
+        '''for reference, the hour frame list is as follows: 
+        [self.hour_frame, self.hour_temp, self.hour_feels, self.hour_wind, self.hour_gust, self.hour_precip, self.hour_mm]
+        use self.hour_frame.hour_frame_list[i][w] where i = hour frame, and w = the widget from the above list (its children)'''
+        while self.parent.program_run == True:
+            self.event.clear()
+            hourly_error_msg = ""
+            api_error = False
+            self.hourly_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&hourly=temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,precipitation_probability,precipitation&timezone=auto")
+            if self.hourly_req.status_code == 404:
+                hourly_error_msg = "Error 404"
+                api_error = True
+            elif self.hourly_req.status_code == 500:
+                hourly_error_msg = "Error 500"
+                api_error = True
+            elif self.hourly_req.status_code != 200:
+                hourly_error_msg = "Error 400" #indicates general/unknown api error
+                api_error = True
+            elif self.hourly_req.status_code == 200 and self.hourly_req.content == b'':
+                hourly_error_msg = "No Data"
+                api_error = True
+            if api_error == True:
+                for hour_frame in self.hourly_frame.hour_frame_list:
+                    hour_frame[2].configure(text=hourly_error_msg)
+            elif self.hourly_req.content != b'':
+                self.hourly_dict = self.hourly_req.json()
+                for i, hour in enumerate(self.hourly_dict.get("hourly").get("time")):
+                    if hour[11:13] == str(self.current_hour):
+                        self.matching_hour = i
+                        break
+                for i, hour in enumerate(self.hourly_frame.hour_frame_list):
+                    hour[1].configure(text=f"{self.hourly_dict.get("hourly").get("temperature_2m")[i+self.matching_hour]} C")
+                    hour[2].configure(text=f"Feels: {self.hourly_dict.get("hourly").get("apparent_temperature")[i+self.matching_hour]} C")
+                    hour[4].configure(text=f"{round(self.hourly_dict.get("hourly").get("wind_speed_10m")[i+self.matching_hour])}/{round(self.hourly_dict.get("hourly").get("wind_gusts_10m")[i+self.matching_hour])} Km/h")
+                    hour[5].configure(text=f"POP: {self.hourly_dict.get("hourly").get("precipitation_probability")[i+self.matching_hour]} %")
+                    hour[6].configure(text=f"{self.hourly_dict.get("hourly").get("precipitation")[i+self.matching_hour]} mm")
+            self.event.set()
+            time.sleep(3600) #updates every hour
+            self.get_hourly_forecast()
+
+    def get_hourly_thread(self, hourly_func):
+        hourly_thread = threading.Thread(target=hourly_func, args=())
+        hourly_thread.start()
+    
 
     def convert_weather_code(self, code: int):
         weathercode_dict = {0 : "Clear Sky",

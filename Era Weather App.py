@@ -50,7 +50,7 @@ class MainWindow(ctk.CTk):
 
         #WIDGETS
         #logic
-        self.app_logic = AppLogic(self)
+        self.app_logic = AppLogic(self, hour)
 
         #Frame Structure for Main Page
         self.ui_panel = UIPanel(self, self.base_font, self.placeholder_image)
