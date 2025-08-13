@@ -1,7 +1,9 @@
 import customtkinter as ctk
 import pandas as pd
 import json
+import datetime
 from Logic import AppLogic
+
 
 class MainWindow(ctk.CTk):
     def __init__(self, title, windowsize):
@@ -16,7 +18,9 @@ class MainWindow(ctk.CTk):
         self.selected_lat = "default"
         self.selected_long = "default"
 
-        self.app_logic = AppLogic(self)
+        hour = datetime.datetime.now().hour
+
+        self.app_logic = AppLogic(self, hour)
         self.app_logic.load_city_data() #this function still needs to be called to fill city_list (in main app this will be called when options menu is raised)
         self.options_menu = OptionsMenu(self, self.base_font, self.app_logic, self.app_logic.city_list)
         self.options_menu.pack(expand=True, fill="both")
@@ -65,7 +69,10 @@ class OptionsMenu(ctk.CTkFrame):
             self.dropdown_menu.bind("<FocusIn>", self.clear_dropdown)
 
         def confirm_city_selection(self, app_logic):
-            app_logic.store_selected_city(self.dropdown_selection)            
+            app_logic.store_selected_city(self.dropdown_selection)   
+            app_logic.get_current_cond(False)    
+            app_logic.get_seven_day_forecast(False)
+            app_logic.get_hourly_forecast(False)     
             self.destroy()
             
         def clear_dropdown(self, event):

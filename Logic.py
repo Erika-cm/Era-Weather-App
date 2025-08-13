@@ -112,7 +112,7 @@ class AppLogic():
             pass #user has not selected a city, confirm button does nothing
         #possible BUG: what happens if user enters text with no match in dataset and hits confirm?   
     
-    def get_current_cond(self):
+    def get_current_cond(self, called_by_thread: bool):
         while self.parent.program_run == True:
             self.event.clear()
             self.current_cond_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&current=temperature_2m,weather_code,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,pressure_msl&timezone=auto")
@@ -135,14 +135,17 @@ class AppLogic():
                 self.current_conditions_frame.current_cond_mm.configure(text=f"Precipitation: {self.currend_cond_dict.get("current").get("precipitation")} mm")
                 self.current_conditions_frame.current_cond_pressure.configure(text=f"Pressure: {round(self.currend_cond_dict.get("current").get("pressure_msl")/10, 1)} Kpa")
             self.event.set()
-            time.sleep(1800) #will refresh every 30 mins
-            self.get_current_cond()
+            if called_by_thread == True:
+                time.sleep(1800) #will refresh every 30 mins
+                self.get_current_cond(called_by_thread)
+            else:
+                break
     
     def get_current_cond_thread(self, current_cond_func):
-        current_cond_thread = threading.Thread(target=current_cond_func, args=())
+        current_cond_thread = threading.Thread(target=current_cond_func, args=(True,))
         current_cond_thread.start()
 
-    def get_seven_day_forecast(self):
+    def get_seven_day_forecast(self, called_by_thread: bool):
         '''for reference, the day frame list is as follows: 
         [self.day_frame, self.day_frame_icon, self.day_frame_high, self.day_frame_low, self.day_frame_humid, self.day_frame_wind, self.day_frame_precip]
         use self.seven_day_frame.day_frame_list[i][w] where i = day frame, and w = the widget from the above list (its children)'''
@@ -176,14 +179,17 @@ class AppLogic():
                     day[5].configure(text=f"Wind: {self.seven_day_dict.get("daily").get("wind_speed_10m_max")[i]} Km/h\nGust: {self.seven_day_dict.get("daily").get("wind_gusts_10m_max")[i]} Km/h")
                     day[6].configure(text=f"POP: {self.seven_day_dict.get("daily").get("precipitation_probability_max")[i]} %\n{self.seven_day_dict.get("daily").get("precipitation_sum")[i]} mm")     
             self.event.set()
-            time.sleep(10800) #updates every 3 hours
-            self.get_seven_day_forecast()
+            if called_by_thread == True:
+                time.sleep(10800) #updates every 3 hours
+                self.get_seven_day_forecast(called_by_thread)
+            else:
+                break
 
     def get_seven_day_thread(self, seven_day_func):
-        seven_day_thread = threading.Thread(target=seven_day_func, args=())
+        seven_day_thread = threading.Thread(target=seven_day_func, args=(True, ))
         seven_day_thread.start()
 
-    def get_hourly_forecast(self):
+    def get_hourly_forecast(self, called_by_thread: bool):
         '''for reference, the hour frame list is as follows: 
         [self.hour_frame, self.hour_temp, self.hour_feels, self.hour_wind, self.hour_gust, self.hour_precip, self.hour_mm]
         use self.hour_frame.hour_frame_list[i][w] where i = hour frame, and w = the widget from the above list (its children)'''
@@ -220,11 +226,14 @@ class AppLogic():
                     hour[5].configure(text=f"POP: {self.hourly_dict.get("hourly").get("precipitation_probability")[i+self.matching_hour]} %")
                     hour[6].configure(text=f"{self.hourly_dict.get("hourly").get("precipitation")[i+self.matching_hour]} mm")
             self.event.set()
-            time.sleep(3600) #updates every hour
-            self.get_hourly_forecast()
+            if called_by_thread == True:
+                time.sleep(3600) #updates every hour
+                self.get_hourly_forecast(called_by_thread)
+            else:
+                break
 
     def get_hourly_thread(self, hourly_func):
-        hourly_thread = threading.Thread(target=hourly_func, args=())
+        hourly_thread = threading.Thread(target=hourly_func, args=(True, ))
         hourly_thread.start()
     
 
