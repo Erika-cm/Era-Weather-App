@@ -61,7 +61,9 @@ class AppLogic():
             for file in self.file_list:
                 if file.endswith(".png") == True:
                     self.icon_filenames.append(file)
-                    self.icon_list.append(ctk.CTkImage(light_image=Image.open(file)))
+                    icon = Image.open(file)
+                    icon_resized = icon.resize((32, 32))
+                    self.icon_list.append(ctk.CTkImage(light_image=icon_resized))
         except FileNotFoundError:
             self.icon_filenames.append("File Not Found Error")
             self.icon_list.append(self.placeholder_image)
@@ -181,8 +183,9 @@ class AppLogic():
             pass #user has not selected a city, confirm button does nothing
         #possible BUG: what happens if user enters text with no match in dataset and hits confirm?   
     
-    def get_current_cond(self, called_by_thread: bool):
+    def get_current_cond(self, called_by_thread: bool, icon_load_attempts: int):
         while self.parent.program_run == True:
+            time.sleep(0.5)
             self.event.clear()
             self.current_cond_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&current=temperature_2m,weather_code,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,pressure_msl&current=is_day&timezone=auto")
             if self.current_cond_req.status_code == 404:
@@ -203,7 +206,14 @@ class AppLogic():
                 weather_code_text = weather_code_data[0]
                 weather_code_icon = weather_code_data[self.current_cond_dict.get("current").get("is_day") + 1]
                 
-                self.current_conditions_frame.current_cond_temp.configure(text=f" {self.current_cond_dict.get("current").get("temperature_2m")} C", image = weather_code_icon)
+                self.current_conditions_frame.current_cond_temp.configure(text=f" {self.current_cond_dict.get("current").get("temperature_2m")} C")
+                try:
+                    self.current_conditions_frame.current_cond_temp.configure(image = weather_code_icon)
+                    icon_load_attempts = 1
+                except AssertionError:
+                    icon_load_attempts += 1
+                    if icon_load_attempts <= 5:
+                        self.get_current_cond(called_by_thread, icon_load_attempts)
                 self.current_conditions_frame.current_cond_desc.configure(text=weather_code_text)
                 self.current_conditions_frame.current_cond_humidity.configure(text=f"Humidity: {self.current_cond_dict.get("current").get("relative_humidity_2m")} %")
                 self.current_conditions_frame.current_cond_feels.configure(text=f"Feels Like: {self.current_cond_dict.get("current").get("apparent_temperature")} C")
@@ -214,19 +224,20 @@ class AppLogic():
             self.event.set()
             if called_by_thread == True:
                 time.sleep(1800) #will refresh every 30 mins
-                self.get_current_cond(called_by_thread)
+                self.get_current_cond(called_by_thread, icon_load_attempts=1)
             else:
                 break
     
     def get_current_cond_thread(self, current_cond_func):
-        current_cond_thread = threading.Thread(target=current_cond_func, args=(True,))
+        current_cond_thread = threading.Thread(target=current_cond_func, args=(True, 1))
         current_cond_thread.start()
 
-    def get_seven_day_forecast(self, called_by_thread: bool):
+    def get_seven_day_forecast(self, called_by_thread: bool, icon_load_attempts: int):
         '''for reference, the day frame list is as follows: 
         [self.day_frame, self.day_frame_icon, self.day_frame_high, self.day_frame_low, self.day_frame_humid, self.day_frame_wind, self.day_frame_precip]
         use self.seven_day_frame.day_frame_list[i][w] where i = day frame, and w = the widget from the above list (its children)'''
         while self.parent.program_run == True:
+            time.sleep(1)
             self.event.clear()
             seven_day_error_msg = ""
             api_error = False
@@ -250,7 +261,13 @@ class AppLogic():
                 self.seven_day_dict = self.seven_day_req.json()
                 self.seven_day_weather_codes = self.seven_day_dict.get("daily").get("weather_code")
                 for i, day in enumerate(self.seven_day_frame.day_frame_list):
-                    day[1].configure(image=self.convert_weather_code(self.seven_day_weather_codes[i])[2])
+                    try:
+                        day[1].configure(image=self.convert_weather_code(self.seven_day_weather_codes[i])[2])
+                        icon_load_attempts = 1
+                    except AssertionError:
+                        icon_load_attempts += 1
+                        if icon_load_attempts <= 5:
+                            self.get_seven_day_forecast(called_by_thread, icon_load_attempts)
                     day[2].configure(text=f"High: {self.seven_day_dict.get("daily").get("temperature_2m_max")[i]} C\nFeels: {self.seven_day_dict.get("daily").get("apparent_temperature_max")[i]} C")
                     day[3].configure(text=f"Low: {self.seven_day_dict.get("daily").get("temperature_2m_min")[i]} C\nFeels: {self.seven_day_dict.get("daily").get("apparent_temperature_min")[i]} C")
                     day[4].configure(text=f"Humidity: {self.seven_day_dict.get("daily").get("relative_humidity_2m_mean")[i]} %")
@@ -259,19 +276,20 @@ class AppLogic():
             self.event.set()
             if called_by_thread == True:
                 time.sleep(10800) #updates every 3 hours
-                self.get_seven_day_forecast(called_by_thread)
+                self.get_seven_day_forecast(called_by_thread, icon_load_attempts=1)
             else:
                 break
 
     def get_seven_day_thread(self, seven_day_func):
-        seven_day_thread = threading.Thread(target=seven_day_func, args=(True, ))
+        seven_day_thread = threading.Thread(target=seven_day_func, args=(True, 1))
         seven_day_thread.start()
 
-    def get_hourly_forecast(self, called_by_thread: bool):
+    def get_hourly_forecast(self, called_by_thread: bool, icon_load_attempts: int):
         '''for reference, the hour frame list is as follows: 
         [self.hour_frame, self.hour_temp, self.hour_feels, self.hour_wind, self.hour_gust, self.hour_precip, self.hour_mm]
         use self.hour_frame.hour_frame_list[i][w] where i = hour frame, and w = the widget from the above list (its children)'''
         while self.parent.program_run == True:
+            time.sleep(1.5)
             self.event.clear()
             hourly_error_msg = ""
             api_error = False
@@ -304,7 +322,14 @@ class AppLogic():
                     else:
                         self.matching_hour = 0 #this prevents an exception when a matching hour cant be found (could be caused by issue with API or with local device time)
                 for i, hour in enumerate(self.hourly_frame.hour_frame_list):
-                    hour[1].configure(text=f" {self.hourly_dict.get("hourly").get("temperature_2m")[i+self.matching_hour]} C", image=hourly_weather_icons[i+self.matching_hour])
+                    hour[1].configure(text=f" {self.hourly_dict.get("hourly").get("temperature_2m")[i+self.matching_hour]} C")
+                    try:
+                        hour[1].configure(image=hourly_weather_icons[i+self.matching_hour])
+                        icon_load_attempts = 1
+                    except AssertionError:
+                        icon_load_attempts += 1
+                        if icon_load_attempts <= 5:
+                            self.get_hourly_forecast(called_by_thread, icon_load_attempts) 
                     hour[2].configure(text=f"Feels: {self.hourly_dict.get("hourly").get("apparent_temperature")[i+self.matching_hour]} C")
                     hour[4].configure(text=f"{round(self.hourly_dict.get("hourly").get("wind_speed_10m")[i+self.matching_hour])}/{round(self.hourly_dict.get("hourly").get("wind_gusts_10m")[i+self.matching_hour])} Km/h")
                     hour[5].configure(text=f"POP: {self.hourly_dict.get("hourly").get("precipitation_probability")[i+self.matching_hour]} %")
@@ -312,12 +337,12 @@ class AppLogic():
             self.event.set()
             if called_by_thread == True:
                 time.sleep(3600) #updates every hour
-                self.get_hourly_forecast(called_by_thread)
+                self.get_hourly_forecast(called_by_thread, icon_load_attempts=1)
             else:
                 break
 
     def get_hourly_thread(self, hourly_func):
-        hourly_thread = threading.Thread(target=hourly_func, args=(True, ))
+        hourly_thread = threading.Thread(target=hourly_func, args=(True, 1))
         hourly_thread.start()
     
     def convert_weather_code(self, code: int) -> list[str]:
