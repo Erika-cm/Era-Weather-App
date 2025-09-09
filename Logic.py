@@ -4,6 +4,8 @@ import json
 import threading
 import time
 import requests
+import os
+from PIL import Image
 
 class AppLogic():
     def __init__(self, parent, hour):
@@ -14,8 +16,75 @@ class AppLogic():
         self.event = threading.Event()
         self.parent = parent
         self.current_hour = hour
-        
-    
+
+        self.weathercode_dict = {0 : ["Clear Sky", "icon_clear_sky_night.png", "icon_clear_sky_day.png"], #night/day icon
+                                1 : ["Mainly Clear", "icon_mainly_clear_night.png", "icon_mainly_clear_day.png"], #night/day icon
+                                2 : ["Partly Cloudy", "icon_partly_cloudy_night.png", "icon_partly_cloudy_day.png"], #night/day icon
+                                3 : ["Overcast", "icon_overcast.png", "icon_overcast.png"],
+                                45 : ["Fog", "icon_fog.png", "icon_fog.png"],
+                                48 : ["Rime Fog", "icon_rime_fog.png", "icon_rime_fog.png"],
+                                51 : ["Light Drizzle", "icon_light_drizzle.png", "icon_light_drizzle.png"],
+                                53 : ["Moderate Drizzle", "icon_moderate_drizzle.png", "icon_moderate_drizzle.png"],
+                                55 : ["Dense Drizzle", "icon_dense_drizzle.png", "icon_dense_drizzle.png"],
+                                56 : ["Light Freezing Drizzle", "icon_light_freezing_drizzle.png", "icon_light_freezing_drizzle.png"],
+                                57 : ["Dense Freezing Drizzle", "icon_dense_freezing_drizzle.png", "icon_dense_freezing_drizzle.png"],
+                                61 : ["Light Rain", "icon_light_rain.png", "icon_light_rain.png"],
+                                63 : ["Moderate Rain", "icon_moderate_rain.png", "icon_moderate_rain.png"],
+                                65 : ["Heavy Rain", "icon_heavy_rain.png", "icon_heavy_rain.png"],
+                                66 : ["Light Freezing Rain", "icon_light_freezing_rain.png", "icon_light_freezing_rain.png"],
+                                67 : ["Heavy Freezing Rain", "icon_heavy_freezing_rain.png", "icon_heavy_freezing_rain.png"],
+                                71 : ["Light Snow", "icon_light_snow.png",  "icon_light_snow.png"],
+                                73 : ["Moderate Snow", "icon_moderate_snow.png", "icon_moderate_snow.png"],
+                                75 : ["Heavy Snow", "icon_heavy_snow.png", "icon_heavy_snow.png"],
+                                77 : ["Snow Grains", "icon_snow_grains.png", "icon_snow_grains.png"],
+                                80 : ["Light Rain Showers", "icon_light_rain_showers.png", "icon_light_rain_showers.png"],
+                                81 : ["Moderate Rain Showers", "icon_moderate_rain_showers.png", "icon_moderate_rain_showers.png"],
+                                82 : ["Heavy Rain Showers", "icon_heavy_rain_showers.png", "icon_heavy_rain_showers.png"],
+                                85 : ["Light Snow Showers", "icon_light_snow_showers.png", "icon_light_snow_showers.png"],
+                                86 : ["Heavy Snow Showers", "icon_heavy_snow_showers.png", "icon_heavy_snow_showers.png"],
+                                95 : ["Thunderstorms", "icon_thunderstorms.png", "icon_thunderstorms.png"],
+                                96 : ["Thunderstorms with Light Hail", "icon_t-storms_with_light_hail.png", "icon_t-storms_with_light_hail.png"],
+                                99 : ["Thunderstorms with Heavy Hail", "icon_t-storms_with_heavy_hail.png", "icon_t-storms_with_heavy_hail.png"]}
+
+        self.load_icons()
+        self.map_images_to_weather_codes()
+
+    #methods    
+    def load_icons(self) -> None:
+        self.placeholder_image = ctk.CTkImage(light_image=Image.open("icon_placeholder.png"))
+        self.options_icon = ctk.CTkImage(light_image=Image.open("icon_options.png"))
+        self.refresh_icon = ctk.CTkImage(light_image=Image.open("icon_refresh.png"))
+        self.icon_list = []
+        self.icon_filenames = []
+        try:
+            self.file_list = os.listdir(self.parent.icon_directory)
+            for file in self.file_list:
+                if file.endswith(".png") == True:
+                    self.icon_filenames.append(file)
+                    self.icon_list.append(ctk.CTkImage(light_image=Image.open(file)))
+        except FileNotFoundError:
+            self.icon_filenames.append("File Not Found Error")
+            self.icon_list.append(self.placeholder_image)
+        if None in self.icon_list:    
+            for i, img in enumerate(self.icon_list): #reattempt to load any icons that failed to load
+                if img == None:
+                    self.icon_list.pop(i)
+                    try:
+                        self.icon_list.insert(i, (ctk.CTkImage(light_image=Image.open(self.icon_filenames[i]))))
+                    except FileNotFoundError:
+                        self.icon_list.insert(i, (self.placeholder_image)) #NOTE: this assumes placeholder image loaded properly
+            
+    def map_images_to_weather_codes(self) -> None:
+        self.weather_code_image_dict = {}
+        for item in self.weathercode_dict.items():
+            current_item_filenames = []
+            current_item_filenames.append(item[1][0])
+            for filename in item[1][1:]:
+                for i, file in enumerate(self.icon_filenames):
+                    if file == filename:
+                        current_item_filenames.append(self.icon_list[i])
+            self.weather_code_image_dict[item[0]] = current_item_filenames
+
     def give_applogic_panel_access(self, current_conditions_frame, seven_day_frame, hourly_frame):
         self.current_conditions_frame = current_conditions_frame
         self.seven_day_frame = seven_day_frame
@@ -115,25 +184,33 @@ class AppLogic():
     def get_current_cond(self, called_by_thread: bool):
         while self.parent.program_run == True:
             self.event.clear()
-            self.current_cond_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&current=temperature_2m,weather_code,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,pressure_msl&timezone=auto")
+            self.current_cond_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&current=temperature_2m,weather_code,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation,pressure_msl&current=is_day&timezone=auto")
             if self.current_cond_req.status_code == 404:
                 self.current_conditions_frame.current_cond_desc.configure(text="404 Not Found")
+                self.current_conditions_frame.current_cond_temp.configure(image=self.placeholder_image)
             elif self.current_cond_req.status_code == 500:
                 self.current_conditions_frame.current_cond_desc.configure(text="500 Internal Server Error")
+                self.current_conditions_frame.current_cond_temp.configure(image=self.placeholder_image)
             elif self.current_cond_req.status_code != 200:
                 self.current_conditions_frame.current_cond_desc.configure(text="Unknown API Error")
+                self.current_conditions_frame.current_cond_temp.configure(image=self.placeholder_image)
             elif self.current_cond_req.status_code == 200 and self.current_cond_req.content == b'':
                 self.current_conditions_frame.current_cond_desc.configure(text="No Data")
+                self.current_conditions_frame.current_cond_temp.configure(image=self.placeholder_image)
             elif self.current_cond_req.content != b'':
-                self.currend_cond_dict = self.current_cond_req.json()
-                self.current_conditions_frame.current_cond_temp.configure(text=f"{self.currend_cond_dict.get("current").get("temperature_2m")} C")
-                self.current_conditions_frame.current_cond_desc.configure(text=self.convert_weather_code(self.currend_cond_dict.get("current").get("weather_code")))
-                self.current_conditions_frame.current_cond_humidity.configure(text=f"Humidity: {self.currend_cond_dict.get("current").get("relative_humidity_2m")} %")
-                self.current_conditions_frame.current_cond_feels.configure(text=f"Feels Like: {self.currend_cond_dict.get("current").get("apparent_temperature")} C")
-                self.current_conditions_frame.current_cond_wind.configure(text=f"Wind: {self.currend_cond_dict.get("current").get("wind_speed_10m")} km/h {self.convert_wind_deg(self.currend_cond_dict.get("current").get("wind_direction_10m"))}")
-                self.current_conditions_frame.current_cond_gust.configure(text=f"Gust: {self.currend_cond_dict.get("current").get("wind_gusts_10m")} km/h")
-                self.current_conditions_frame.current_cond_mm.configure(text=f"Precipitation: {self.currend_cond_dict.get("current").get("precipitation")} mm")
-                self.current_conditions_frame.current_cond_pressure.configure(text=f"Pressure: {round(self.currend_cond_dict.get("current").get("pressure_msl")/10, 1)} Kpa")
+                self.current_cond_dict = self.current_cond_req.json()
+                weather_code_data = self.convert_weather_code(self.current_cond_dict.get("current").get("weather_code"))
+                weather_code_text = weather_code_data[0]
+                weather_code_icon = weather_code_data[self.current_cond_dict.get("current").get("is_day") + 1]
+                
+                self.current_conditions_frame.current_cond_temp.configure(text=f" {self.current_cond_dict.get("current").get("temperature_2m")} C", image = weather_code_icon)
+                self.current_conditions_frame.current_cond_desc.configure(text=weather_code_text)
+                self.current_conditions_frame.current_cond_humidity.configure(text=f"Humidity: {self.current_cond_dict.get("current").get("relative_humidity_2m")} %")
+                self.current_conditions_frame.current_cond_feels.configure(text=f"Feels Like: {self.current_cond_dict.get("current").get("apparent_temperature")} C")
+                self.current_conditions_frame.current_cond_wind.configure(text=f"Wind: {self.current_cond_dict.get("current").get("wind_speed_10m")} km/h {self.convert_wind_deg(self.current_cond_dict.get("current").get("wind_direction_10m"))}")
+                self.current_conditions_frame.current_cond_gust.configure(text=f"Gust: {self.current_cond_dict.get("current").get("wind_gusts_10m")} km/h")
+                self.current_conditions_frame.current_cond_mm.configure(text=f"Precipitation: {self.current_cond_dict.get("current").get("precipitation")} mm")
+                self.current_conditions_frame.current_cond_pressure.configure(text=f"Pressure: {round(self.current_cond_dict.get("current").get("pressure_msl")/10, 1)} Kpa")
             self.event.set()
             if called_by_thread == True:
                 time.sleep(1800) #will refresh every 30 mins
@@ -154,7 +231,6 @@ class AppLogic():
             seven_day_error_msg = ""
             api_error = False
             self.seven_day_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&daily=weather_code,temperature_2m_max,apparent_temperature_max,temperature_2m_min,apparent_temperature_min,relative_humidity_2m_mean,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max,precipitation_sum&timezone=auto")
-            # print(self.seven_day_req.json())
             if self.seven_day_req.status_code == 404:
                 seven_day_error_msg = "Error 404"
                 api_error = True
@@ -172,7 +248,9 @@ class AppLogic():
                     day[2].configure(text=seven_day_error_msg)
             elif self.seven_day_req.content != b'':
                 self.seven_day_dict = self.seven_day_req.json()
+                self.seven_day_weather_codes = self.seven_day_dict.get("daily").get("weather_code")
                 for i, day in enumerate(self.seven_day_frame.day_frame_list):
+                    day[1].configure(image=self.convert_weather_code(self.seven_day_weather_codes[i])[2])
                     day[2].configure(text=f"High: {self.seven_day_dict.get("daily").get("temperature_2m_max")[i]} C\nFeels: {self.seven_day_dict.get("daily").get("apparent_temperature_max")[i]} C")
                     day[3].configure(text=f"Low: {self.seven_day_dict.get("daily").get("temperature_2m_min")[i]} C\nFeels: {self.seven_day_dict.get("daily").get("apparent_temperature_min")[i]} C")
                     day[4].configure(text=f"Humidity: {self.seven_day_dict.get("daily").get("relative_humidity_2m_mean")[i]} %")
@@ -197,7 +275,7 @@ class AppLogic():
             self.event.clear()
             hourly_error_msg = ""
             api_error = False
-            self.hourly_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&hourly=temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,precipitation_probability,precipitation&timezone=auto")
+            self.hourly_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&hourly=temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,precipitation_probability,precipitation,is_day,weather_code&timezone=auto")
             if self.hourly_req.status_code == 404:
                 hourly_error_msg = "Error 404"
                 api_error = True
@@ -211,16 +289,22 @@ class AppLogic():
                 hourly_error_msg = "No Data"
                 api_error = True
             if api_error == True:
-                for hour_frame in self.hourly_frame.hour_frame_list:
+                for hour_frame in self.hourly_frame.hour_frame_list: #display error msg and placeholder image (?)
+                    hour_frame[1].configure(image=self.placeholder_image)
                     hour_frame[2].configure(text=hourly_error_msg)
-            elif self.hourly_req.content != b'':
+            elif self.hourly_req.content != b'': #no error, parse the req
                 self.hourly_dict = self.hourly_req.json()
+                hourly_weather_icons = []
+                for i, code in  enumerate(self.hourly_dict.get("hourly").get("weather_code")):
+                    hourly_weather_icons.append(self.convert_weather_code(code)[self.hourly_dict.get("hourly").get("is_day")[i] + 1]) 
                 for i, hour in enumerate(self.hourly_dict.get("hourly").get("time")):
-                    if hour[11:13] == str(self.current_hour):
+                    if int(hour[11:13]) == self.current_hour-1:
                         self.matching_hour = i
                         break
+                    else:
+                        self.matching_hour = 0 #this prevents an exception when a matching hour cant be found (could be caused by issue with API or with local device time)
                 for i, hour in enumerate(self.hourly_frame.hour_frame_list):
-                    hour[1].configure(text=f"{self.hourly_dict.get("hourly").get("temperature_2m")[i+self.matching_hour]} C")
+                    hour[1].configure(text=f" {self.hourly_dict.get("hourly").get("temperature_2m")[i+self.matching_hour]} C", image=hourly_weather_icons[i+self.matching_hour])
                     hour[2].configure(text=f"Feels: {self.hourly_dict.get("hourly").get("apparent_temperature")[i+self.matching_hour]} C")
                     hour[4].configure(text=f"{round(self.hourly_dict.get("hourly").get("wind_speed_10m")[i+self.matching_hour])}/{round(self.hourly_dict.get("hourly").get("wind_gusts_10m")[i+self.matching_hour])} Km/h")
                     hour[5].configure(text=f"POP: {self.hourly_dict.get("hourly").get("precipitation_probability")[i+self.matching_hour]} %")
@@ -236,40 +320,12 @@ class AppLogic():
         hourly_thread = threading.Thread(target=hourly_func, args=(True, ))
         hourly_thread.start()
     
-
-    def convert_weather_code(self, code: int):
-        weathercode_dict = {0 : "Clear Sky",
-                            1 : "Mainly Clear",
-                            2 : "Partly Cloudy",
-                            3 : "Overcast",
-                            45 : "Fog",
-                            48 : "Rime Fog",
-                            51 : "Light Drizzle",
-                            53 : "Moderate Drizzle",
-                            55 : "Dense Drizzle",
-                            56 : "Light Freezing Drizzle",
-                            57 : "Dense Freezing Drizzle",
-                            61 : "Light Rain",
-                            63 : "Moderate Rain",
-                            65 : "Heavy Rain",
-                            66 : "Light Freezing Rain",
-                            67 : "Heavy Freezing Rain",
-                            71 : "Light Snow",
-                            73 : "Moderate Snow",
-                            75 : "Heavy Snow",
-                            77 : "Snow Grains",
-                            80 : "Light Rain Showers",
-                            81 : "Moderate Rain Showers",
-                            82 : "Heavy Rain Showers",
-                            85 : "Light Snow Showers",
-                            86 : "Heavy Snow Showers",
-                            95 : "Thunderstorms",
-                            96 : "Thunderstorms with Light Hail",
-                            99 : "Thunderstorms with Heavy Hail"}
-        return weathercode_dict.get(code)
+    def convert_weather_code(self, code: int) -> list[str]:
+        weather_code_data = self.weather_code_image_dict.get(code)
+        if weather_code_data == None:
+            weather_code_data = ["Weather Code Error", self.placeholder_image, self.placeholder_image]
+        return weather_code_data
     
     def convert_wind_deg(self, degree: int):
         compass_sectors = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"]
         return compass_sectors[round((degree%360)/22.5)]
-
-        #304 13.511111111111111, NW

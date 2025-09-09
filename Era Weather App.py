@@ -9,6 +9,7 @@ from tkinter import ttk
 from itertools import islice, chain
 import datetime
 from time import sleep
+import os
 from Options_Menu import OptionsMenu
 from Layout import CurrentConditionsPanel, UIPanel, SevenDayPanel, HourlyPanel
 from Logic import AppLogic
@@ -33,7 +34,9 @@ class MainWindow(ctk.CTk):
         self.current_font = ("Arial", 16)
         self.mid_font = ("Arial", 13)
         self.hourly_font = ("Arial", 12)
-        self.placeholder_image = ctk.CTkImage(light_image=Image.open("test image.png"))
+        self.icon_directory = os.getcwd() # prototype code: this will be replaced by logic that will define the sub-folder with the icon files 
+        #this will also define user files directories, where user_options is stored (we will need both)
+        
         #attempt to fill city vars on run, if fails to load from json use defaults
         try:
             with open("user_options.json", "r") as user_data_import: 
@@ -53,10 +56,10 @@ class MainWindow(ctk.CTk):
         self.app_logic = AppLogic(self, hour)
 
         #Frame Structure for Main Page
-        self.ui_panel = UIPanel(self, self.base_font, self.placeholder_image)
-        self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.app_logic, self.placeholder_image)
-        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.mid_font,self.app_logic, self.placeholder_image, today)
-        self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic, self.placeholder_image, hour)
+        self.ui_panel = UIPanel(self, self.base_font, self.app_logic)
+        self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.app_logic)
+        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.mid_font,self.app_logic, today)
+        self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic, hour)
               
         #LAYOUT
         #Main panels

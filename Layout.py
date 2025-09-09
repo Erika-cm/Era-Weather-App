@@ -34,10 +34,10 @@ class MainWindow(ctk.CTk):
         #instantiate frame classes
         self.app_logic = AppLogic(self, hour)
 
-        self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.app_logic, self.placeholder_image)
-        self.ui_panel = UIPanel(self, self.base_font, self.placeholder_image)
-        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.mid_font, self.app_logic, self.placeholder_image, today)
-        self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic, self.placeholder_image, hour)
+        self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.app_logic)
+        self.ui_panel = UIPanel(self, self.base_font, self.app_logic)
+        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.mid_font, self.app_logic, today)
+        self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic, hour)
         
         #layout
         self.ui_panel.grid(row=0, column=0, columnspan=2, sticky="new")
@@ -47,25 +47,57 @@ class MainWindow(ctk.CTk):
 
         self.mainloop()
 
+class UIPanel(ctk.CTkFrame):
+    def __init__(self, parent, font, app_logic):
+        super().__init__(master=parent)
+
+        #panel chars
+        self.configure(fg_color="#002020", corner_radius=0)
+
+        #parent
+        self.parent = parent
+        self.app_logic = app_logic
+        
+        #widgets
+        self.selected_city_display = ctk.CTkLabel(self, textvariable=self.parent.selected_city_var, font=font, bg_color="#002020", text_color="#999999", wraplength=940, anchor="w")
+        self.refresh_data = ctk.CTkButton(self, text="", image=app_logic.refresh_icon, font=font, fg_color="#003030", corner_radius=0, width=10, command=lambda: self.refresh())
+        self.options = ctk.CTkButton(self, text="", image=app_logic.options_icon, font=font, fg_color="#003030", corner_radius=0, width=10, command=lambda: self.open_options_menu(parent, font))
+
+        #layout
+        self.options.pack(side="left", pady=1)
+        self.refresh_data.pack(side="left", pady=1)
+        self.selected_city_display.pack(side="left", fill="x", pady=1, padx=3)
+
+    def open_options_menu(self, parent, font):
+        self.app_logic.load_city_data()
+        self.options_menu = OptionsMenu(parent, font, self.app_logic, self.app_logic.city_list)
+        self.options_menu.grid(row=0, rowspan=3, column=0, columnspan=2, sticky="news")
+        self.options_menu.tkraise()
+    
+    def refresh(self):
+        print("This is a refresh button, it will eventually send all 3 api requests and update displayed data")
+        print(self.parent.selected_city_var.get())
+        print(self.parent.selected_lat, self.parent.selected_long)
+        
 class CurrentConditionsPanel(ctk.CTkFrame):
-    def __init__(self, parent, font, app_logic, placeholder_image): 
+    def __init__(self, parent, font, app_logic): 
         super().__init__(master=parent)
 
         self.parent = parent
 
         #panel chars
-        self.configure(fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
+        self.configure(fg_color="#005050", border_color="#000000", border_width=1, corner_radius=0)
         
         #widgets
-        self.current_cond_title = ctk.CTkLabel(self, bg_color="#008575", text="Current Conditions", font=font, height=20)
-        self.current_cond_temp = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, compound="left", image=placeholder_image, corner_radius=0, height=20)
-        self.current_cond_desc = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, height=20)
-        self.current_cond_humidity = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, height=20)
-        self.current_cond_feels = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, height=20)
-        self.current_cond_wind = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, height=20)
-        self.current_cond_gust = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, corner_radius=0, height=20)
-        self.current_cond_mm = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, corner_radius=0, height=20)
-        self.current_cond_pressure = ctk.CTkLabel(self, bg_color="#008575", text="", font=font, corner_radius=0, height=20)
+        self.current_cond_title = ctk.CTkLabel(self, bg_color="#005050", text="Current Conditions", font=font, height=20)
+        self.current_cond_temp = ctk.CTkLabel(self, bg_color="#005050", text="", font=font, compound="left", image=app_logic.placeholder_image, corner_radius=0, height=20)
+        self.current_cond_desc = ctk.CTkLabel(self, bg_color="#005050", text="", font=font, height=20)
+        self.current_cond_humidity = ctk.CTkLabel(self, bg_color="#005050", text="", font=font, height=20)
+        self.current_cond_feels = ctk.CTkLabel(self, bg_color="#005050", text="", font=font, height=20)
+        self.current_cond_wind = ctk.CTkLabel(self, bg_color="#005050", text="", font=font, height=20)
+        self.current_cond_gust = ctk.CTkLabel(self, bg_color="#005050", text="", font=font, corner_radius=0, height=20)
+        self.current_cond_mm = ctk.CTkLabel(self, bg_color="#005050", text="", font=font, corner_radius=0, height=20)
+        self.current_cond_pressure = ctk.CTkLabel(self, bg_color="#005050", text="", font=font, corner_radius=0, height=20)
 
         #layout
         self.current_cond_title.pack(pady=(12,10))
@@ -81,45 +113,14 @@ class CurrentConditionsPanel(ctk.CTkFrame):
         #start recursive api call and widget config for current conditions
         app_logic.get_current_cond_thread(app_logic.get_current_cond)
 
-class UIPanel(ctk.CTkFrame):
-    def __init__(self, parent, font, placeholder_image):
-        super().__init__(master=parent)
-
-        #panel chars
-        self.configure(fg_color="#003030", corner_radius=0)
-
-        #parent
-        self.parent = parent
-        
-        #widgets
-        self.selected_city_display = ctk.CTkLabel(self, textvariable=self.parent.selected_city_var, font=font, bg_color="#003030", text_color="#999999", wraplength=940, anchor="w")
-        self.refresh_data = ctk.CTkButton(self, text="", image=placeholder_image, font=font, fg_color="#005050", corner_radius=0, width=10, command=lambda: self.refresh())
-        self.options = ctk.CTkButton(self, text="", image=placeholder_image, font=font, fg_color="#005050", corner_radius=0, width=10, command=lambda: self.open_options_menu(parent, font))
-
-        #layout
-        self.options.pack(side="left", pady=1)
-        self.refresh_data.pack(side="left", pady=1)
-        self.selected_city_display.pack(side="left", fill="x", pady=1, padx=3)
-
-    def open_options_menu(self, parent, font):
-        parent.app_logic.load_city_data()
-        self.options_menu = OptionsMenu(parent, font, parent.app_logic, parent.app_logic.city_list)
-        self.options_menu.grid(row=0, rowspan=3, column=0, columnspan=2, sticky="news")
-        self.options_menu.tkraise()
-    
-    def refresh(self):
-        print("This is a refresh button, it will eventually send all 3 api requests and update displayed data")
-        print(self.parent.selected_city_var.get())
-        print(self.parent.selected_lat, self.parent.selected_long)
-
 class SevenDayPanel(ctk.CTkFrame):
-    def __init__(self, parent, font, small_font, app_logic, placeholder_image, today):
+    def __init__(self, parent, font, small_font, app_logic, today):
         super().__init__(master=parent)
         self.grid_columnconfigure((0,1,2,3,4,5,6), weight=1, uniform="a")
         self.grid_rowconfigure(0, weight=1)
 
         #panel chars
-        self.configure(fg_color="#005050", border_color="#000000", border_width=1, corner_radius=0)
+        self.configure(fg_color="#002020", border_color="#000000", border_width=1, corner_radius=0)
 
         #subframes
         self.seven_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -127,10 +128,10 @@ class SevenDayPanel(ctk.CTkFrame):
         self.day_frame_list = []
         for i, day in enumerate(self.days_of_wk):
             #frames
-            self.day_frame = ctk.CTkFrame(self, width=109, fg_color="#008575", border_color="#000000", border_width=1, corner_radius=0)
+            self.day_frame = ctk.CTkFrame(self, width=109, fg_color="#005050", border_color="#000000", border_width=1, corner_radius=0)
             #widgets NOTE also remove placeholder text and images here in final version
             self.day_frame_title = ctk.CTkLabel(self.day_frame, text=day, font=font)
-            self.day_frame_icon = ctk.CTkLabel(self.day_frame, text="", image=placeholder_image, height=15)
+            self.day_frame_icon = ctk.CTkLabel(self.day_frame, text="", image=app_logic.placeholder_image, height=15)
             self.day_frame_high = ctk.CTkLabel(self.day_frame, text="", font=font, height=30)
             self.day_frame_low = ctk.CTkLabel(self.day_frame, text="", font=font, height=30)
             self.day_frame_humid = ctk.CTkLabel(self.day_frame, text="", font=font, height=15)
@@ -158,13 +159,13 @@ class SevenDayPanel(ctk.CTkFrame):
         return chain(iterable, islice(list, today))
 
 class HourlyPanel(ctk.CTkScrollableFrame):
-    def __init__(self, parent, font, app_logic, placeholder_image, hour):
+    def __init__(self, parent, font, app_logic, hour):
         super().__init__(master=parent)
         self.grid_rowconfigure((0,1,2,3,4,5), weight=1, uniform="a")
         self.grid_columnconfigure((0,1,2,3,4,5,6,7,8,9,10,11), weight=1, uniform="a")
 
         #panel chars
-        self.configure(fg_color="#005050", corner_radius=0, border_color="#000000", border_width=1)
+        self.configure(fg_color="#002020", corner_radius=0, border_color="#000000", border_width=1)
 
         #generate subframes and hours
         hour_total = 0
@@ -184,15 +185,15 @@ class HourlyPanel(ctk.CTkScrollableFrame):
                 hour_str = str(hour) + " AM" #simply convert to string, append AM
             
             #frames
-            self.hour_frame = ctk.CTkFrame(self, fg_color="#008575", height=133, width=77, border_width=1, border_color="#000000", corner_radius=0)
+            self.hour_frame = ctk.CTkFrame(self, fg_color="#005050", height=133, width=77, border_width=1, border_color="#000000", corner_radius=0)
             #widgets NOTE also remove placeholder text and images from here in final version
-            self.hour_title = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text=hour_str, font=font, corner_radius=0, height=18)
-            self.hour_temp = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="", compound="left", image=placeholder_image, font=font, corner_radius=0, height=15)
-            self.hour_feels = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="", font=font, corner_radius=0, height=15)
-            self.hour_wind_txt = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="Wind/Gust", font=font, corner_radius=0, height=15)
-            self.hour_wind_nums = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="", font=font, corner_radius=0, height=15)
-            self.hour_precip = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="", font=font, corner_radius=0, height=15)
-            self.hour_mm = ctk.CTkLabel(self.hour_frame, bg_color="#008575", text="", font=font, corner_radius=0, height=15)
+            self.hour_title = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text=hour_str, font=font, corner_radius=0, height=18)
+            self.hour_temp = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text="", compound="left", image=app_logic.placeholder_image, font=font, corner_radius=0, height=15)
+            self.hour_feels = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text="", font=font, corner_radius=0, height=15)
+            self.hour_wind_txt = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text="Wind/Gust", font=font, corner_radius=0, height=15)
+            self.hour_wind_nums = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text="", font=font, corner_radius=0, height=15)
+            self.hour_precip = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text="", font=font, corner_radius=0, height=15)
+            self.hour_mm = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text="", font=font, corner_radius=0, height=15)
             #layout
             self.hour_frame.grid(row=row_count, column=column_count, sticky="nwse", padx=1, pady=1)
             self.hour_title.pack(pady=(2,1))
