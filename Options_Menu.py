@@ -20,7 +20,7 @@ class MainWindow(ctk.CTk):
 
         hour = datetime.datetime.now().hour
 
-        self.app_logic = AppLogic(self, hour)
+        self.app_logic = AppLogic(self)
         self.app_logic.load_city_data() #this function still needs to be called to fill city_list (in main app this will be called when options menu is raised)
         self.options_menu = OptionsMenu(self, self.base_font, self.app_logic, self.app_logic.city_list)
         self.options_menu.pack(expand=True, fill="both")
@@ -70,9 +70,9 @@ class OptionsMenu(ctk.CTkFrame):
 
         def confirm_city_selection(self, app_logic):
             app_logic.store_selected_city(self.dropdown_selection)   
-            app_logic.get_current_cond(False)    
-            app_logic.get_seven_day_forecast(False)
-            app_logic.get_hourly_forecast(False)     
+            app_logic.get_current_cond(False, 1)    
+            app_logic.get_seven_day_forecast(False, 1)
+            app_logic.get_hourly_forecast(False, 1)     
             self.destroy()
             
         def clear_dropdown(self, event):

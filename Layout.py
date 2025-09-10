@@ -32,12 +32,12 @@ class MainWindow(ctk.CTk):
         self.selected_long = "default"
 
         #instantiate frame classes
-        self.app_logic = AppLogic(self, hour)
+        self.app_logic = AppLogic(self)
 
         self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.app_logic)
         self.ui_panel = UIPanel(self, self.base_font, self.app_logic)
-        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.mid_font, self.app_logic, today)
-        self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic, hour)
+        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.mid_font, self.app_logic)
+        self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic)
         
         #layout
         self.ui_panel.grid(row=0, column=0, columnspan=2, sticky="new")
@@ -114,7 +114,7 @@ class CurrentConditionsPanel(ctk.CTkFrame):
         app_logic.get_current_cond_thread(app_logic.get_current_cond)
 
 class SevenDayPanel(ctk.CTkFrame):
-    def __init__(self, parent, font, small_font, app_logic, today):
+    def __init__(self, parent, font, small_font, app_logic):
         super().__init__(master=parent)
         self.grid_columnconfigure((0,1,2,3,4,5,6), weight=1, uniform="a")
         self.grid_rowconfigure(0, weight=1)
@@ -123,14 +123,11 @@ class SevenDayPanel(ctk.CTkFrame):
         self.configure(fg_color="#002020", border_color="#000000", border_width=1, corner_radius=0)
 
         #subframes
-        self.seven_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
-        self.days_of_wk = self.resort_days(self.seven_days, today)
         self.day_frame_list = []
-        for i, day in enumerate(self.days_of_wk):
+        for i in range(7):
             #frames
             self.day_frame = ctk.CTkFrame(self, width=109, fg_color="#005050", border_color="#000000", border_width=1, corner_radius=0)
-            #widgets NOTE also remove placeholder text and images here in final version
-            self.day_frame_title = ctk.CTkLabel(self.day_frame, text=day, font=font)
+            self.day_frame_title = ctk.CTkLabel(self.day_frame, text="", font=font)
             self.day_frame_icon = ctk.CTkLabel(self.day_frame, text="", image=app_logic.placeholder_image, height=15)
             self.day_frame_high = ctk.CTkLabel(self.day_frame, text="", font=font, height=30)
             self.day_frame_low = ctk.CTkLabel(self.day_frame, text="", font=font, height=30)
@@ -148,46 +145,33 @@ class SevenDayPanel(ctk.CTkFrame):
             self.day_frame_wind.pack(pady=5)
             self.day_frame_precip.pack(pady=(5,0))
 
-            self.day_frame_list.append([self.day_frame, self.day_frame_icon, self.day_frame_high, self.day_frame_low, self.day_frame_humid, self.day_frame_wind, self.day_frame_precip])
+            self.day_frame_list.append([self.day_frame, self.day_frame_title, self.day_frame_icon, self.day_frame_high, self.day_frame_low, self.day_frame_humid, self.day_frame_wind, self.day_frame_precip])
 
-        #start recursive api call and widget config for current conditions
-        app_logic.get_seven_day_thread(app_logic.get_seven_day_forecast)
-
-    def resort_days(self, list, today):
-        iterable = iter(list)
-        next(islice(iterable, today, today), None)
-        return chain(iterable, islice(list, today))
+        #start recursive api call and widget config for 7 day forecast
+        app_logic.get_seven_day_thread(app_logic.get_seven_day_forecast) 
 
 class HourlyPanel(ctk.CTkScrollableFrame):
-    def __init__(self, parent, font, app_logic, hour):
+    def __init__(self, parent, font, app_logic):
         super().__init__(master=parent)
         self.grid_rowconfigure((0,1,2,3,4,5), weight=1, uniform="a")
         self.grid_columnconfigure((0,1,2,3,4,5,6,7,8,9,10,11), weight=1, uniform="a")
 
         #panel chars
         self.configure(fg_color="#002020", corner_radius=0, border_color="#000000", border_width=1)
-
+        
         #generate subframes and hours
         hour_total = 0
         row_count = 0
         column_count=0
         self.hour_frame_list = []
-        hour_str = ""
         while hour_total < 72:
-            if hour > 24: #reset hour to 1
-                hour = 1
             if column_count >= 12:
                 column_count = 0 #reset col
                 row_count += 1 #adv row
-            if hour > 12:
-                hour_str = str((hour - 12)) + " PM" #convert to 12 hr clock
-            elif hour <= 12:
-                hour_str = str(hour) + " AM" #simply convert to string, append AM
             
             #frames
             self.hour_frame = ctk.CTkFrame(self, fg_color="#005050", height=133, width=77, border_width=1, border_color="#000000", corner_radius=0)
-            #widgets NOTE also remove placeholder text and images from here in final version
-            self.hour_title = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text=hour_str, font=font, corner_radius=0, height=18)
+            self.hour_title = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text="", font=font, corner_radius=0, height=18)
             self.hour_temp = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text="", compound="left", image=app_logic.placeholder_image, font=font, corner_radius=0, height=15)
             self.hour_feels = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text="", font=font, corner_radius=0, height=15)
             self.hour_wind_txt = ctk.CTkLabel(self.hour_frame, bg_color="#005050", text="Wind/Gust", font=font, corner_radius=0, height=15)
@@ -204,10 +188,9 @@ class HourlyPanel(ctk.CTkScrollableFrame):
             self.hour_precip.pack(pady=(2,0))
             self.hour_mm.pack(pady=(0,2))
             column_count += 1
-            hour += 1
             hour_total += 1
 
-            self.hour_frame_list.append([self.hour_frame, self.hour_temp, self.hour_feels, self.hour_wind_txt, self.hour_wind_nums, self.hour_precip, self.hour_mm])
+            self.hour_frame_list.append([self.hour_frame, self.hour_title, self.hour_temp, self.hour_feels, self.hour_wind_txt, self.hour_wind_nums, self.hour_precip, self.hour_mm])
 
         app_logic.get_hourly_thread(app_logic.get_hourly_forecast)
 

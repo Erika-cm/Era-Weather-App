@@ -6,16 +6,17 @@ import time
 import requests
 import os
 from PIL import Image
+from itertools import islice, chain
+import datetime
 
 class AppLogic():
-    def __init__(self, parent, hour):
+    def __init__(self, parent):
 
         #variables
         self.list_of_searches = []
         self.city_list = []
         self.event = threading.Event()
         self.parent = parent
-        self.current_hour = hour
 
         self.weathercode_dict = {0 : ["Clear Sky", "icon_clear_sky_night.png", "icon_clear_sky_day.png"], #night/day icon
                                 1 : ["Mainly Clear", "icon_mainly_clear_night.png", "icon_mainly_clear_day.png"], #night/day icon
@@ -168,7 +169,7 @@ class AppLogic():
             self.parent.selected_lat = self.city_data[selected_city_mask]['lat'].iloc[0]
             self.parent.selected_long = self.city_data[selected_city_mask]['lng'].iloc[0]
             del self.city_data #no need to keep dataset in memory
-            self.parent.selected_city_var.set(self.city + " " + self.region + " " + self.country) 
+            self.parent.selected_city_var.set(self.city + ", " + self.region + ", " + self.country) 
             #store selected city data as a dict, output to json
             selected_city_data = {"City Name" : self.city, 
                                   "Region Name" : self.region, 
@@ -183,6 +184,7 @@ class AppLogic():
             pass #user has not selected a city, confirm button does nothing
         #possible BUG: what happens if user enters text with no match in dataset and hits confirm?   
     
+    #weather panels
     def get_current_cond(self, called_by_thread: bool, icon_load_attempts: int):
         while self.parent.program_run == True:
             time.sleep(0.5)
@@ -239,6 +241,7 @@ class AppLogic():
         while self.parent.program_run == True:
             time.sleep(1)
             self.event.clear()
+            self.update_7day_labels()
             seven_day_error_msg = ""
             api_error = False
             self.seven_day_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&daily=weather_code,temperature_2m_max,apparent_temperature_max,temperature_2m_min,apparent_temperature_min,relative_humidity_2m_mean,wind_speed_10m_max,wind_gusts_10m_max,precipitation_probability_max,precipitation_sum&timezone=auto")
@@ -256,23 +259,23 @@ class AppLogic():
                 api_error = True
             if api_error == True:
                 for i, day in enumerate(self.seven_day_frame.day_frame_list):
-                    day[2].configure(text=seven_day_error_msg)
+                    day[3].configure(text=seven_day_error_msg)
             elif self.seven_day_req.content != b'':
                 self.seven_day_dict = self.seven_day_req.json()
                 self.seven_day_weather_codes = self.seven_day_dict.get("daily").get("weather_code")
                 for i, day in enumerate(self.seven_day_frame.day_frame_list):
                     try:
-                        day[1].configure(image=self.convert_weather_code(self.seven_day_weather_codes[i])[2])
+                        day[2].configure(image=self.convert_weather_code(self.seven_day_weather_codes[i])[2])
                         icon_load_attempts = 1
                     except AssertionError:
                         icon_load_attempts += 1
                         if icon_load_attempts <= 5:
                             self.get_seven_day_forecast(called_by_thread, icon_load_attempts)
-                    day[2].configure(text=f"High: {self.seven_day_dict.get("daily").get("temperature_2m_max")[i]} C\nFeels: {self.seven_day_dict.get("daily").get("apparent_temperature_max")[i]} C")
-                    day[3].configure(text=f"Low: {self.seven_day_dict.get("daily").get("temperature_2m_min")[i]} C\nFeels: {self.seven_day_dict.get("daily").get("apparent_temperature_min")[i]} C")
-                    day[4].configure(text=f"Humidity: {self.seven_day_dict.get("daily").get("relative_humidity_2m_mean")[i]} %")
-                    day[5].configure(text=f"Wind: {self.seven_day_dict.get("daily").get("wind_speed_10m_max")[i]} Km/h\nGust: {self.seven_day_dict.get("daily").get("wind_gusts_10m_max")[i]} Km/h")
-                    day[6].configure(text=f"POP: {self.seven_day_dict.get("daily").get("precipitation_probability_max")[i]} %\n{self.seven_day_dict.get("daily").get("precipitation_sum")[i]} mm")     
+                    day[3].configure(text=f"High: {self.seven_day_dict.get("daily").get("temperature_2m_max")[i]} C\nFeels: {self.seven_day_dict.get("daily").get("apparent_temperature_max")[i]} C")
+                    day[4].configure(text=f"Low: {self.seven_day_dict.get("daily").get("temperature_2m_min")[i]} C\nFeels: {self.seven_day_dict.get("daily").get("apparent_temperature_min")[i]} C")
+                    day[5].configure(text=f"Humidity: {self.seven_day_dict.get("daily").get("relative_humidity_2m_mean")[i]} %")
+                    day[6].configure(text=f"Wind: {self.seven_day_dict.get("daily").get("wind_speed_10m_max")[i]} Km/h\nGust: {self.seven_day_dict.get("daily").get("wind_gusts_10m_max")[i]} Km/h")
+                    day[7].configure(text=f"POP: {self.seven_day_dict.get("daily").get("precipitation_probability_max")[i]} %\n{self.seven_day_dict.get("daily").get("precipitation_sum")[i]} mm")     
             self.event.set()
             if called_by_thread == True:
                 time.sleep(10800) #updates every 3 hours
@@ -284,6 +287,11 @@ class AppLogic():
         seven_day_thread = threading.Thread(target=seven_day_func, args=(True, 1))
         seven_day_thread.start()
 
+    def resort_days(self, list, today):
+        iterable = iter(list)
+        next(islice(iterable, today, today), None)
+        return chain(iterable, islice(list, today))
+
     def get_hourly_forecast(self, called_by_thread: bool, icon_load_attempts: int):
         '''for reference, the hour frame list is as follows: 
         [self.hour_frame, self.hour_temp, self.hour_feels, self.hour_wind, self.hour_gust, self.hour_precip, self.hour_mm]
@@ -291,6 +299,7 @@ class AppLogic():
         while self.parent.program_run == True:
             time.sleep(1.5)
             self.event.clear()
+            self.update_hourly_labels()
             hourly_error_msg = ""
             api_error = False
             self.hourly_req = requests.get(f"https://api.open-meteo.com/v1/forecast?latitude={self.parent.selected_lat}&longitude={self.parent.selected_long}&hourly=temperature_2m,apparent_temperature,wind_speed_10m,wind_gusts_10m,precipitation_probability,precipitation,is_day,weather_code&timezone=auto")
@@ -308,32 +317,32 @@ class AppLogic():
                 api_error = True
             if api_error == True:
                 for hour_frame in self.hourly_frame.hour_frame_list: #display error msg and placeholder image (?)
-                    hour_frame[1].configure(image=self.placeholder_image)
-                    hour_frame[2].configure(text=hourly_error_msg)
+                    hour_frame[2].configure(image=self.placeholder_image)
+                    hour_frame[3].configure(text=hourly_error_msg)
             elif self.hourly_req.content != b'': #no error, parse the req
                 self.hourly_dict = self.hourly_req.json()
                 hourly_weather_icons = []
                 for i, code in  enumerate(self.hourly_dict.get("hourly").get("weather_code")):
                     hourly_weather_icons.append(self.convert_weather_code(code)[self.hourly_dict.get("hourly").get("is_day")[i] + 1]) 
                 for i, hour in enumerate(self.hourly_dict.get("hourly").get("time")):
-                    if int(hour[11:13]) == self.current_hour-1:
+                    if int(hour[11:13]) == self.update_hour():
                         self.matching_hour = i
                         break
                     else:
                         self.matching_hour = 0 #this prevents an exception when a matching hour cant be found (could be caused by issue with API or with local device time)
                 for i, hour in enumerate(self.hourly_frame.hour_frame_list):
-                    hour[1].configure(text=f" {self.hourly_dict.get("hourly").get("temperature_2m")[i+self.matching_hour]} C")
+                    hour[2].configure(text=f" {self.hourly_dict.get("hourly").get("temperature_2m")[i+self.matching_hour]} C")
                     try:
-                        hour[1].configure(image=hourly_weather_icons[i+self.matching_hour])
+                        hour[2].configure(image=hourly_weather_icons[i+self.matching_hour])
                         icon_load_attempts = 1
                     except AssertionError:
                         icon_load_attempts += 1
                         if icon_load_attempts <= 5:
                             self.get_hourly_forecast(called_by_thread, icon_load_attempts) 
-                    hour[2].configure(text=f"Feels: {self.hourly_dict.get("hourly").get("apparent_temperature")[i+self.matching_hour]} C")
-                    hour[4].configure(text=f"{round(self.hourly_dict.get("hourly").get("wind_speed_10m")[i+self.matching_hour])}/{round(self.hourly_dict.get("hourly").get("wind_gusts_10m")[i+self.matching_hour])} Km/h")
-                    hour[5].configure(text=f"POP: {self.hourly_dict.get("hourly").get("precipitation_probability")[i+self.matching_hour]} %")
-                    hour[6].configure(text=f"{self.hourly_dict.get("hourly").get("precipitation")[i+self.matching_hour]} mm")
+                    hour[3].configure(text=f"Feels: {self.hourly_dict.get("hourly").get("apparent_temperature")[i+self.matching_hour]} C")
+                    hour[5].configure(text=f"{round(self.hourly_dict.get("hourly").get("wind_speed_10m")[i+self.matching_hour])}/{round(self.hourly_dict.get("hourly").get("wind_gusts_10m")[i+self.matching_hour])} Km/h")
+                    hour[6].configure(text=f"POP: {self.hourly_dict.get("hourly").get("precipitation_probability")[i+self.matching_hour]} %")
+                    hour[7].configure(text=f"{self.hourly_dict.get("hourly").get("precipitation")[i+self.matching_hour]} mm")
             self.event.set()
             if called_by_thread == True:
                 time.sleep(3600) #updates every hour
@@ -354,3 +363,55 @@ class AppLogic():
     def convert_wind_deg(self, degree: int):
         compass_sectors = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"]
         return compass_sectors[round((degree%360)/22.5)]
+    
+    def update_weekday(self):
+        today = datetime.datetime.now().weekday()
+        return today
+    
+    def update_hour(self):
+        hour = datetime.datetime.now().hour
+        return hour
+    
+    def generate_days_of_wk(self, hourly_version: bool):
+        today = self.update_weekday()
+        if hourly_version == False:
+            seven_days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+        elif hourly_version == True:
+            seven_days = ["Mon-", "Tue-", "Wed-", "Thu-", "Fri-", "Sat-", "Sun-"]
+        days_of_wk = list(self.resort_days(seven_days, today))
+        return days_of_wk
+    
+    def update_7day_labels(self):
+        days_of_wk = self.generate_days_of_wk(False)
+        for i, day in enumerate(self.seven_day_frame.day_frame_list):
+            day[1].configure(text=days_of_wk[i])
+
+    def update_hourly_labels(self):
+        days_of_wk = self.generate_days_of_wk(True)
+        hour = self.update_hour()
+        hour_total = 0
+        hour_str = ""
+        new_day: bool = False #default to false, b/c seven_day_index does not immediately advance
+        seven_day_index = 0
+        while hour_total < 72:
+            if hour > 24: #reset hour to 1
+                hour = 1
+            if hour > 12 and hour < 24:
+                new_day = False
+                hour_str = days_of_wk[seven_day_index] + str((hour - 12)) + " PM" #convert to 12 hr clock
+            elif hour == 12:
+                hour_str = days_of_wk[seven_day_index] + str((hour)) + " PM" #no conversion to 12 hr, but switch to PM
+            elif hour < 12:
+                hour_str = days_of_wk[seven_day_index] + str(hour) + " AM" #simply convert to string, append AM
+            elif hour == 24:
+                if new_day == False:
+                    seven_day_index += 1 #adv seven day index if going from pm to am
+                    new_day = True
+                hour_str = days_of_wk[seven_day_index] + str(hour - 12) + " AM" #=12AM
+            
+            self.hourly_frame.hour_frame_list[hour_total][1].configure(text=hour_str)
+            hour_total += 1
+            hour += 1
+
+    
+

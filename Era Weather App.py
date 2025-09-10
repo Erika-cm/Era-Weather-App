@@ -25,11 +25,10 @@ class MainWindow(ctk.CTk):
         self.grid_rowconfigure((1,2), weight=10, uniform="a") #can pass a list(range(2) to spec number of cols/rows in place of (0,1) in this case)
         self.grid_columnconfigure(0, weight=1, uniform="a")
         self.grid_columnconfigure(1, weight=4, uniform="a")
+        ctk.set_appearance_mode("dark") #light mode doesn't really work with current visuals
         
         #variables
         self.program_run = True 
-        today = datetime.datetime.now().weekday()
-        hour = datetime.datetime.now().hour
         self.base_font = ("Arial", 15)
         self.current_font = ("Arial", 16)
         self.mid_font = ("Arial", 13)
@@ -41,7 +40,8 @@ class MainWindow(ctk.CTk):
         try:
             with open("user_options.json", "r") as user_data_import: 
                 json_import = json.load(user_data_import)
-            self.selected_city_var = ctk.StringVar(value=(json_import.get("City Name") + " " + json_import.get("Region Name"))) #country name to be added here
+
+            self.selected_city_var = ctk.StringVar(value=(json_import.get("City Name") + ", " + json_import.get("Region Name") + ", " + json_import.get("Country"))) #country name to be added here
             self.selected_lat = json_import.get("Latitude")
             self.selected_long = json_import.get("Longitude")
             #self.selected_city_loaded = True #variable not in use: could be used to pause api reqs if no city selected
@@ -53,13 +53,13 @@ class MainWindow(ctk.CTk):
 
         #WIDGETS
         #logic
-        self.app_logic = AppLogic(self, hour)
+        self.app_logic = AppLogic(self)
 
         #Frame Structure for Main Page
         self.ui_panel = UIPanel(self, self.base_font, self.app_logic)
         self.current_conditions_frame = CurrentConditionsPanel(self, self.current_font, self.app_logic)
-        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.mid_font,self.app_logic, today)
-        self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic, hour)
+        self.seven_day_frame = SevenDayPanel(self, self.base_font, self.mid_font,self.app_logic)
+        self.hourly_frame = HourlyPanel(self, self.hourly_font, self.app_logic)
               
         #LAYOUT
         #Main panels
@@ -90,7 +90,6 @@ class MainWindow(ctk.CTk):
         self.app_logic.event.wait()
         self.destroy()
         
-
     def on_move_window(self, event):
         if event.widget == self:
             sleep(0.015)
