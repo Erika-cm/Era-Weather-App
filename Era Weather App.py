@@ -1,16 +1,8 @@
-import xml.etree.ElementTree as et
-import requests
-import xml
 import json
-import pandas as pd
 import customtkinter as ctk
-from PIL import Image
-from tkinter import ttk
-from itertools import islice, chain
-import datetime
 from time import sleep
 import os
-from Options_Menu import OptionsMenu
+import sys
 from Layout import CurrentConditionsPanel, UIPanel, SevenDayPanel, HourlyPanel
 from Logic import AppLogic
 
@@ -33,14 +25,17 @@ class MainWindow(ctk.CTk):
         self.current_font = ("Arial", 16)
         self.mid_font = ("Arial", 13)
         self.hourly_font = ("Arial", 12)
-        self.icon_directory = os.getcwd() # prototype code: this will be replaced by logic that will define the sub-folder with the icon files 
-        #this will also define user files directories, where user_options is stored (we will need both)
-        
-        #attempt to fill city vars on run, if fails to load from json use defaults
-        try:
-            with open("user_options.json", "r") as user_data_import: 
-                json_import = json.load(user_data_import)
 
+        #asset sub-directories
+        self.data_path = "Assets\\Data"
+        self.icon_path = "Assets\\Icons"
+
+        self.set_user_files_path()
+        
+        #attempt to fill city vars on run, if fails to load from json display message in UI Panel
+        try:
+            with open(self.user_files_path + "\\user_options.json", "r") as user_data_import: 
+                json_import = json.load(user_data_import)
             self.selected_city_var = ctk.StringVar(value=(json_import.get("City Name") + ", " + json_import.get("Region Name") + ", " + json_import.get("Country"))) #country name to be added here
             self.selected_lat = json_import.get("Latitude")
             self.selected_long = json_import.get("Longitude")
@@ -73,16 +68,36 @@ class MainWindow(ctk.CTk):
         #allow applogic to alter panel widgets and data
         self.app_logic.give_applogic_panel_access(self.current_conditions_frame, self.seven_day_frame, self.hourly_frame)
 
-        self.mainloop()
-
         #icon file needs .exe or .py directory
-        # try:
-        #     exe_path = os.getcwd()
-        # except Exception:
-        #     exe_path = os.path.dirname(os.path.abspath(sys.executable))
-        # icon_path = os.path.join(exe_path, "Icon.ico")
-        # self.iconbitmap(icon_path)
+        try:
+            exe_path = os.getcwd()
+        except Exception:
+            exe_path = os.path.dirname(os.path.abspath(sys.executable))
+        icon_path = os.path.join(exe_path, "Icon.ico")
+        self.iconbitmap(icon_path)
+
+        self.mainloop()
     
+    #set up file directories
+    #User Generated Files
+    def set_user_files_path(self):
+        self.user_path = os.path.expanduser("~") #ref to User folder in Windows
+        self.user_files_path = os.path.join(self.user_path, "Documents\\Era Desktop Weather")
+        try:
+            os.mkdir(self.user_files_path)
+        except FileExistsError:
+            pass
+        except FileNotFoundError:
+            print("Documents folder not found: launch process for user to select alternative.")
+
+    #Program Assets (except .ico)
+    def get_prog_assets_path(self, asset_path):
+        try:
+            self.main_path = sys._MEIPASS # type: ignore (sys._MEIPASS is not an attribute of sys, its a temp folder) 
+        except Exception:
+            self.main_path = os.getcwd()
+        return os.path.join(self.main_path, asset_path)
+
     #end api requests when main window is closed
     def terminate_api_reqs(self):
         self.program_run = False
@@ -94,4 +109,4 @@ class MainWindow(ctk.CTk):
         if event.widget == self:
             sleep(0.015)
 
-main_window = MainWindow("Title", (960, 540))
+main_window = MainWindow("Era Desktop Weather", (960, 540))

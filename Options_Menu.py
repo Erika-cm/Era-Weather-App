@@ -1,6 +1,4 @@
 import customtkinter as ctk
-import pandas as pd
-import json
 import datetime
 from Logic import AppLogic
 

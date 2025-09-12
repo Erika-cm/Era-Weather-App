@@ -1,9 +1,6 @@
 import customtkinter as ctk
 from PIL import Image
-import requests
-import json
 import datetime
-from itertools import islice, chain
 from Options_Menu import OptionsMenu
 from Logic import AppLogic
 
@@ -75,9 +72,9 @@ class UIPanel(ctk.CTkFrame):
         self.options_menu.tkraise()
     
     def refresh(self):
-        print("This is a refresh button, it will eventually send all 3 api requests and update displayed data")
-        print(self.parent.selected_city_var.get())
-        print(self.parent.selected_lat, self.parent.selected_long)
+        self.app_logic.get_current_cond(called_by_thread=False, icon_load_attempts=1)
+        self.app_logic.get_seven_day_forecast(called_by_thread=False, icon_load_attempts=1)
+        self.app_logic.get_hourly_forecast(called_by_thread=False, icon_load_attempts=1)
         
 class CurrentConditionsPanel(ctk.CTkFrame):
     def __init__(self, parent, font, app_logic): 

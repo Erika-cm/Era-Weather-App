@@ -52,17 +52,17 @@ class AppLogic():
 
     #methods    
     def load_icons(self) -> None:
-        self.placeholder_image = ctk.CTkImage(light_image=Image.open("icon_placeholder.png"))
-        self.options_icon = ctk.CTkImage(light_image=Image.open("icon_options.png"))
-        self.refresh_icon = ctk.CTkImage(light_image=Image.open("icon_refresh.png"))
+        self.placeholder_image = ctk.CTkImage(light_image=Image.open(self.parent.get_prog_assets_path(self.parent.icon_path) + "\\icon_placeholder.png"))
+        self.options_icon = ctk.CTkImage(light_image=Image.open(self.parent.get_prog_assets_path(self.parent.icon_path) + "\\icon_options.png"))
+        self.refresh_icon = ctk.CTkImage(light_image=Image.open(self.parent.get_prog_assets_path(self.parent.icon_path) + "\\icon_refresh.png"))
         self.icon_list = []
         self.icon_filenames = []
         try:
-            self.file_list = os.listdir(self.parent.icon_directory)
+            self.file_list = os.listdir(self.parent.get_prog_assets_path(self.parent.icon_path))
             for file in self.file_list:
                 if file.endswith(".png") == True:
                     self.icon_filenames.append(file)
-                    icon = Image.open(file)
+                    icon = Image.open(self.parent.get_prog_assets_path(self.parent.icon_path) + "\\" + file)
                     icon_resized = icon.resize((32, 32))
                     self.icon_list.append(ctk.CTkImage(light_image=icon_resized))
         except FileNotFoundError:
@@ -95,7 +95,7 @@ class AppLogic():
     
     #options menu
     def load_city_data(self):
-        self.city_data = pd.read_csv('worldcities.csv')
+        self.city_data = pd.read_csv(self.parent.get_prog_assets_path(self.parent.data_path) + '\\worldcities.csv')
         self.city_data['city_ascii'] = self.city_data['city_ascii'].astype(str)
         self.city_data['admin_name'] = self.city_data['admin_name'].astype(str) 
         self.city_region_country = pd.DataFrame()
@@ -177,7 +177,8 @@ class AppLogic():
                                   "Latitude" : self.parent.selected_lat,
                                   "Longitude" : self.parent.selected_long}
             selected_city_json = json.dumps(selected_city_data, indent=4)
-            with open("user_options.json", "w") as output: #NOTE this overwrites the exising file, could use 'a' if append is needed
+            user_options_path = os.path.join(self.parent.user_files_path, "user_options.json")
+            with open(user_options_path, "w") as output: #NOTE this overwrites the exising file, could use 'a' if append is needed
                 output.write(selected_city_json)
             return self.parent.selected_city_var, self.parent.selected_lat, self.parent.selected_long
         elif dropdown_selection.get() == "Search" or dropdown_selection.get() == "":
@@ -413,5 +414,7 @@ class AppLogic():
             hour_total += 1
             hour += 1
 
-    
-
+    def testing_func(self):
+        days_of_wk = ["Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"]
+        for i, day in enumerate(self.seven_day_frame.day_frame_list):
+            day[1].configure(text=days_of_wk[i])
