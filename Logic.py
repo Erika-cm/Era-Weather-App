@@ -5,9 +5,18 @@ import threading
 import time
 import requests
 import os
+import sys
 from PIL import Image
 from itertools import islice, chain
 import datetime
+
+#Program Assets (except .ico)
+def get_prog_assets_path(asset_path):
+    try:
+        main_path = sys._MEIPASS # type: ignore (sys._MEIPASS is not an attribute of sys, its a temp folder) 
+    except Exception:
+        main_path = os.path.abspath(".")
+    return os.path.join(main_path, asset_path)
 
 class AppLogic():
     def __init__(self, parent):
@@ -17,6 +26,10 @@ class AppLogic():
         self.city_list = []
         self.event = threading.Event()
         self.parent = parent
+
+        #asset sub-directories
+        self.data_path = "Assets\\Data"
+        self.icon_path = "Assets\\Icons"
 
         self.weathercode_dict = {0 : ["Clear Sky", "icon_clear_sky_night.png", "icon_clear_sky_day.png"], #night/day icon
                                 1 : ["Mainly Clear", "icon_mainly_clear_night.png", "icon_mainly_clear_day.png"], #night/day icon
@@ -46,23 +59,23 @@ class AppLogic():
                                 95 : ["Thunderstorms", "icon_thunderstorms.png", "icon_thunderstorms.png"],
                                 96 : ["Thunderstorms with Light Hail", "icon_t-storms_with_light_hail.png", "icon_t-storms_with_light_hail.png"],
                                 99 : ["Thunderstorms with Heavy Hail", "icon_t-storms_with_heavy_hail.png", "icon_t-storms_with_heavy_hail.png"]}
-
+        
         self.load_icons()
         self.map_images_to_weather_codes()
 
     #methods    
     def load_icons(self) -> None:
-        self.placeholder_image = ctk.CTkImage(light_image=Image.open(self.parent.get_prog_assets_path(self.parent.icon_path) + "\\icon_placeholder.png"))
-        self.options_icon = ctk.CTkImage(light_image=Image.open(self.parent.get_prog_assets_path(self.parent.icon_path) + "\\icon_options.png"))
-        self.refresh_icon = ctk.CTkImage(light_image=Image.open(self.parent.get_prog_assets_path(self.parent.icon_path) + "\\icon_refresh.png"))
+        self.placeholder_image = ctk.CTkImage(light_image=Image.open(get_prog_assets_path(self.icon_path) + "\\icon_placeholder.png"))
+        self.options_icon = ctk.CTkImage(light_image=Image.open(get_prog_assets_path(self.icon_path) + "\\icon_options.png"))
+        self.refresh_icon = ctk.CTkImage(light_image=Image.open(get_prog_assets_path(self.icon_path) + "\\icon_refresh.png"))
         self.icon_list = []
         self.icon_filenames = []
         try:
-            self.file_list = os.listdir(self.parent.get_prog_assets_path(self.parent.icon_path))
+            self.file_list = os.listdir(get_prog_assets_path(self.icon_path))
             for file in self.file_list:
                 if file.endswith(".png") == True:
                     self.icon_filenames.append(file)
-                    icon = Image.open(self.parent.get_prog_assets_path(self.parent.icon_path) + "\\" + file)
+                    icon = Image.open(get_prog_assets_path(self.icon_path) + "\\" + file)
                     icon_resized = icon.resize((32, 32))
                     self.icon_list.append(ctk.CTkImage(light_image=icon_resized))
         except FileNotFoundError:
@@ -95,7 +108,7 @@ class AppLogic():
     
     #options menu
     def load_city_data(self):
-        self.city_data = pd.read_csv(self.parent.get_prog_assets_path(self.parent.data_path) + '\\worldcities.csv')
+        self.city_data = pd.read_csv(get_prog_assets_path(self.data_path) + '\\worldcities.csv')
         self.city_data['city_ascii'] = self.city_data['city_ascii'].astype(str)
         self.city_data['admin_name'] = self.city_data['admin_name'].astype(str) 
         self.city_region_country = pd.DataFrame()
